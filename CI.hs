@@ -114,10 +114,10 @@ parseOptions :: Opts.Parser Options
 parseOptions = Options
     <$> (parseDaOptions
          Opts.<|>
-         (Opts.option readFlavor
+         Opts.option readFlavor
           ( Opts.long "ghc-flavor"
          <> Opts.help "The ghc-flavor to test against"
-          )))
+          ))
     <*> parseStackOptions
  where
    readFlavor :: Opts.ReadM GhcFlavor
@@ -219,7 +219,7 @@ buildDists
             -- Apply Digital Asset extensions.
             cmd $ "cd ghc && git remote add upstream " <> upstream
             cmd "cd ghc && git fetch upstream"
-            cmd $ "cd ghc && git -c user.name=\"Cookie Monster\" -c user.email=cookie.monster@seasame-street.com merge --no-edit " <> Data.List.intercalate " " patches
+            cmd $ "cd ghc && git -c user.name=\"Cookie Monster\" -c user.email=cookie.monster@seasame-street.com merge --no-edit " <> unwords patches
         GhcMaster hash -> cmd $ "cd ghc && git checkout " ++ hash
     cmd "cd ghc && git submodule update --init --recursive"
 
