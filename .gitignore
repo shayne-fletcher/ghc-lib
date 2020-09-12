@@ -13,3 +13,4 @@ ghc-master/
 \.#*
 cabal.project.local
 stack.yaml.lock
+flycheck*
