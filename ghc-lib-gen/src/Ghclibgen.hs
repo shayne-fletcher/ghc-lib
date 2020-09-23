@@ -579,19 +579,36 @@ applyPatchCmmParseNoImplicitPrelude ghcFlavor =
 -- function 'appyPatchHadrianStackYaml' guarantees it is available
 -- if its needed.
 
--- Patch Hadrian's Cabal.
+-- | Patch Hadrian's Cabal.
 applyPatchHadrianStackYaml :: GhcFlavor -> IO ()
 applyPatchHadrianStackYaml ghcFlavor = do
-   appendFile "hadrian/stack.yaml" $ unlines ["ghc-options:","  \"$everything\": -O0 -j"]
-   case ghcFlavor of
-     GhcMaster ->
-       appendFile "hadrian/stack.yaml" $
-       unlines [
-           "extra-deps:"
-         , "  - happy-1.20.0" -- See https://gitlab.haskell.org/ghc/ghc/-/issues/18726.
-         , "  - exceptions-0.10.4" -- See [Note : GHC now depends on exceptions package]
-         ]
-     _ -> pure ()
+  let hadrianStackYaml = "hadrian/stack.yaml"
+   -- Disable optimizations to make building hadrian as quick as
+   -- possible (we are assuming here there are no existing ghc-options
+   -- - see below).
+  appendFile hadrianStackYaml $
+    unlines ["ghc-options:","  \"$everything\": -O0 -j"]
+  -- If there are multiple occurences of a stanza (e.g. 'extra-deps')
+  -- they don't get merged and the last occurence prevails. Thus it's
+  -- important to extend a stanza if one already exists and not just
+  -- append a new one.
+  -- Write extra deps as needed.
+  case ghcFlavor of
+    GhcMaster ->
+      readFile' hadrianStackYaml >>= \s ->
+      case stripInfix "extra-deps:" s of
+        Nothing ->
+          -- There are no extra-deps, add.
+          appendFile hadrianStackYaml $
+            unlines ["extra-deps:", "- exceptions-0.10.4"] -- See note [Ghc now depends on exceptions package].
+        Just _ ->
+          -- There are extra-deps, extend.
+          writeFile hadrianStackYaml .
+          replace
+            "extra-deps:"
+            (unlines ["extra-deps:", "- exceptions-0.10.4"]) -- See note [Ghc now depends on exceptions package].
+           $ s
+    _ -> pure ()
 
 -- | Data type representing an approximately parsed Cabal file.
 data Cabal = Cabal
