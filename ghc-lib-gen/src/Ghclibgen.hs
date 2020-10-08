@@ -862,6 +862,7 @@ generatePrerequisites ghcFlavor = do
   -- of this in CI.hs.
   system_ "stack --stack-yaml hadrian/stack.yaml build --only-dependencies"
   system_ "stack --stack-yaml hadrian/stack.yaml exec -- bash -c ./boot"
+  system_ "stack --stack-yaml hadrian/stack.yaml exec -- bash -c \"./mk/get-win32-tarballs.sh download x86_64\""
   system_ "stack --stack-yaml hadrian/stack.yaml exec -- bash -c \"./configure --enable-tarballs-autodownload\""
   withCurrentDirectory "hadrian" $ do
     -- No need to specify a stack.yaml here, we are in the hadrian
