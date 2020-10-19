@@ -22,8 +22,8 @@ module Ghclibgen (
 
 import Control.Monad
 import System.Process.Extra
-import System.FilePath hiding ((</>))
-import System.FilePath.Posix((</>)) -- Make sure we generate / on all platforms.
+import System.FilePath hiding ((</>), normalise, dropTrailingPathSeparator)
+import System.FilePath.Posix((</>), normalise, dropTrailingPathSeparator) -- Make sure we generate / on all platforms.
 import System.Directory.Extra
 import System.IO.Extra
 import Data.List.Extra hiding (find)
@@ -768,6 +768,8 @@ generateGhcLibCabal ghcFlavor = do
         indent2 (nubSort nonParserModules)
     removeGeneratedIntermediateFiles
     putStrLn "# Generating 'ghc-lib.cabal'... Done!"
+    cabalContents <- readFile' "ghc-lib.cabal"
+    putStrLn cabalContents
 
 ghciDef :: GhcFlavor -> String
 ghciDef GhcMaster = ""
@@ -853,6 +855,8 @@ generateGhcLibParserCabal ghcFlavor = do
         ["    exposed-modules:" ] ++ indent2 parserModules
     removeGeneratedIntermediateFiles
     putStrLn "# Generating 'ghc-lib-parser.cabal'... Done!"
+    cabalContents <- readFile' "ghc-lib-parser.cabal"
+    putStrLn cabalContents
 
 -- | Run Hadrian to build the things that the Cabal files need.
 generatePrerequisites :: GhcFlavor -> IO ()
