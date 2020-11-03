@@ -199,8 +199,7 @@ buildDists
 
     -- Get packages missing on Windows needed by hadrian.
     when isWindows $ do
-        stack "exec -- pacman -Syu"
-        stack "exec -- pacman -Su"
+        stack "exec -- pacman -Sy"
         stack "exec -- pacman -S autoconf automake-wrapper make patch python tar mintty --noconfirm"
     -- Building of hadrian dependencies that result from the
     -- invocations of ghc-lib-gen can require some versions of these
