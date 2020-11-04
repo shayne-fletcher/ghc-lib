@@ -201,7 +201,7 @@ buildDists
     when isWindows $ do
         cmd "dir ."
         stack "exec -- pacman -U msys2-keyring-r21.b39fb11-1-any.pkg.tar.xz --noconfirm"
-        stack "exec -- pacman -Sydd pacman --noconfirm"
+        -- stack "exec -- pacman -Sydd pacman --noconfirm"
         stack "exec -- pacman -Syu autoconf automake-wrapper make patch mingw-w64-x86_64-python tar mintty --noconfirm"
         stack "exec -- export PATH=/mingw64/bin:$PATH; echo $PATH"
         stack "exec -- python3 --version"
