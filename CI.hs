@@ -199,6 +199,7 @@ buildDists
 
     -- Get packages missing on Windows needed by hadrian.
     when isWindows $ do
+        cmd "dir ."
         stack "exec -- pacman -U msys2-keyring-r21.b39fb11-1-any.pkg.tar.xz --noconfirm"
         -- stack "exec -- pacman -Sydd pacman --noconfirm"
         stack "exec -- pacman -Syu autoconf automake-wrapper make patch mingw-w64-x86_64-python tar mintty --noconfirm"
