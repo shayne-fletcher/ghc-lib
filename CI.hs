@@ -199,15 +199,9 @@ buildDists
 
     -- Get packages missing on Windows needed by hadrian.
     when isWindows $ do
-        stack "exec -- ls"
-        -- stack "exec -- curl -O http://repo.msys2.org/msys/x86_64/msys2-keyring-r21.b39fb11-1-any.pkg.tar.xz"
-        -- stack "exec -- ls"
-        -- stack "exec -- pacman -U --config <(echo msys2-keyring-r21.b39fb11-1-any.pkg.tar.xz)"
         stack "exec -- pacman -U msys2-keyring-r21.b39fb11-1-any.pkg.tar.xz --noconfirm"
-        stack "exec -- pacman -Sydd pacman --noconfirm"
-        stack "exec -- pacman -S base --noconfirm"
-        -- stack "exec -- pacman -Syu --noconfirm"
-        stack "exec -- pacman -S autoconf automake-wrapper make patch python tar mintty --noconfirm"
+        -- stack "exec -- pacman -Sydd pacman --noconfirm"
+        stack "exec -- pacman -Syu autoconf automake-wrapper make patch python tar mintty --noconfirm"
     -- Building of hadrian dependencies that result from the
     -- invocations of ghc-lib-gen can require some versions of these
     -- have been installed.
