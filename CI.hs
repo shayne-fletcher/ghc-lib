@@ -203,7 +203,8 @@ buildDists
         stack "exec -- pacman -U msys2-keyring-r21.b39fb11-1-any.pkg.tar.xz --noconfirm"
         -- stack "exec -- pacman -Sydd pacman --noconfirm"
         stack "exec -- pacman -Syu autoconf automake-wrapper make patch mingw-w64-x86_64-python tar mintty --noconfirm"
-        -- stack "exec -- python3 --version"                            mingw-w64-python
+        stack "exec -- bash -c \"echo $PATH\""
+        stack "exec -- bash -c \"PATH=/mingw/bin:$PATH; export $PATH; which python3\""
     -- Building of hadrian dependencies that result from the
     -- invocations of ghc-lib-gen can require some versions of these
     -- have been installed.
