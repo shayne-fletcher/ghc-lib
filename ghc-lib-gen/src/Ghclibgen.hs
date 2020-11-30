@@ -410,14 +410,32 @@ applyPatchDisableCompileTimeOptimizations ghcFlavor =
           =<< readFile' file
 
 applyPatchGHCiMessage :: GhcFlavor -> IO ()
-applyPatchGHCiMessage ghcFlavor =
+applyPatchGHCiMessage ghcFlavor = do
+  versionText <- readFile' (root </> "ghcversion.h")
+  let ls = lines versionText
+      haskell = "#define __GLASGOW_HASKELL__ "
+      patch   = "#define __GLASGOW_HASKELL_PATCHLEVEL1__ "
+      version = dropPrefix haskell (head (filter (haskell `isPrefixOf`) ls))
+      ma = show ((read version :: Int) `div` 100)
+      mi = show ((read version :: Int) `mod` 100)
+      pl  = show (read (dropPrefix patch (head (filter (patch `isPrefixOf`) ls))) :: Int)
   when (ghcFlavor == GhcMaster) $ do
+    -- Synthesize MIN_VERSION_ghc_heap. Write this definition before
+    -- testing on it.
     writeFile messageHs .
         replace
           "#if MIN_VERSION_ghc_heap(8,11,0)"
-          "#ifndef MIN_VERSION_ghc_heap\n#define MIN_VERSION_ghc_heap(major1,major2,minor) ((major1) <  8 || (major1) == 8 && (major2) <  11 || (major1) == 8 && (major2) == 11 && (minor) <= 0)\n#endif /* MIN_VERSION_ghc_heap */\n#if MIN_VERSION_ghc_heap(8,11,0)"
+          ("#ifndef MIN_VERSION_ghc_heap\n#define MIN_VERSION_ghc_heap(major1,major2,minor) ((major1) <  " ++ ma ++ " || (major1) == " ++ ma ++ " && (major2) <  " ++ mi  ++ " || (major1) == " ++ ma ++ "  && (major2) == " ++ mi ++ " && (minor) <= " ++ pl ++ ")\n#endif /* MIN_VERSION_ghc_heap */\n#if MIN_VERSION_ghc_heap(8,11,0)")
       =<< readFile' messageHs
-  where messageHs = "libraries/ghci/GHCi/Message.hs"
+  where
+      messageHs = "libraries/ghci/GHCi/Message.hs"
+      root =
+        case ghcFlavor of
+          GhcMaster -> stage0Lib
+          Ghc901 -> stage0Lib
+          Ghc8101 -> stage0Lib
+          Ghc8102 -> stage0Lib
+          _ -> ghcLibGeneratedPath
 
 -- Workaround lack of newer ghc-prim 12/3/2019
 -- (https://gitlab.haskell.org/ghc/ghc/commit/705a16df02411ec2445c9a254396a93cabe559ef)
