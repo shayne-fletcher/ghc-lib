@@ -692,13 +692,9 @@ withCommas ms =
 -- | Common build dependencies.
 commonBuildDepends :: GhcFlavor -> [String]
 commonBuildDepends ghcFlavor =
-  [ "ghc-prim > 0.2 && < 0.7"
-  ] ++
-  [ if ghcFlavor < Ghc8101
-    then "base >= 4.11 && < 4.15"
-    else "base >= 4.12 && < 4.15" -- flavor >= 8.10.*
-  ] ++
-  [ "containers >= 0.5 && < 0.7"
+  [ "ghc-prim > 0.2 && < 0.8"
+  , "base >= 4.12 && < 4.16"
+  , "containers >= 0.5 && < 0.7"
   , "bytestring >= 0.9 && < 0.11"
   , "binary == 0.8.*"
   , "filepath >= 1 && < 1.5"
