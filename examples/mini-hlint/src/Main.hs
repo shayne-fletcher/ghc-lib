@@ -207,13 +207,18 @@ analyzeExpr flags (L loc expr) =
                       ++ "`" ++ showSDoc flags (ppr expr) ++ "'")
     _ -> return ()
 
-#if defined (GHC_MASTER) || defined (GHC_901)
+#if defined (GHC_MASTER)
+analyzeModule :: DynFlags -> Located HsModule -> IO ()
+#elif defined (GHC_901)
 analyzeModule :: DynFlags -> Located HsModule -> ApiAnns -> IO ()
 #else
 analyzeModule :: DynFlags -> Located (HsModule GhcPs) -> ApiAnns -> IO ()
 #endif
-analyzeModule flags (L _ modu) _ =
-  sequence_ [analyzeExpr flags e | e <- universeBi modu]
+analyzeModule flags (L _ modu)
+#if !defined (GHC_MASTER)
+                                _ -- ApiAnns
+#endif
+ = sequence_ [analyzeExpr flags e | e <- universeBi modu]
 
 main :: IO ()
 main = do
@@ -244,7 +249,10 @@ main = do
               report flags errs
 #endif
               when (null errs) $
-               analyzeModule flags m (harvestAnns s)
+                analyzeModule flags m
+#if !defined (GHC_MASTER)
+                                      (harvestAnns s)
+#endif
     _ -> fail "Exactly one file argument required"
   where
 
@@ -259,7 +267,9 @@ main = do
 #endif
         ]
     harvestAnns pst =
-#if defined (GHC_MASTER) || defined (GHC_901)
+#if defined (GHC_MASTER)
+                        undefined
+#elif defined (GHC_901)
         ApiAnns {
               apiAnnItems = Map.fromListWith (++) $ annotations pst
             , apiAnnEofPos = Nothing
