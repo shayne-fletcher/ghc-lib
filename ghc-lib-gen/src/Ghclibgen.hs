@@ -14,6 +14,7 @@ module Ghclibgen (
   , applyPatchHaddockHs
   , applyPatchRtsBytecodes
   , applyPatchGHCiMessage
+  , applyPatchDerivedConstants
   , applyPatchDisableCompileTimeOptimizations
   , applyPatchRtsIncludePaths
   , applyPatchStage
@@ -176,13 +177,19 @@ dataDir = stage0Lib
 
 -- |'dataFiles' is a list of files to be installed for run-time use by
 -- the package.
-dataFiles :: [FilePath]
-dataFiles =
+dataFiles :: GhcFlavor -> [FilePath]
+dataFiles ghcFlavor =
+    -- From ghc/ghc.mk: "The GHC programs need to depend on all the
+    -- helper programs they might call and the settings files they
+    -- use."
     [ "settings"
     , "llvm-targets"
     , "llvm-passes"
-    , "platformConstants"
-    ]
+    ] ++
+    -- Since 2021-04-10 a platformConstants file is no longer a thing.
+    -- See
+    -- (https://gitlab.haskell.org/ghc/ghc/-/commit/2cdc95f9c068421a55c634933ab2d8596eb992fb).
+    [ "platformConstants" | ghcFlavor <= Ghc921 ]
 
 -- | See 'hadrian/src/Rules/Generate.hs'.
 
@@ -261,27 +268,45 @@ generatedParser ghcFlavor =
         else [ "Parser.hs", "Lexer.hs" ]
     )
 
--- | Cabal "extra-source-files" files for ghc-lib-parser.
-ghcLibParserExtraFiles :: GhcFlavor -> [FilePath]
-ghcLibParserExtraFiles ghcFlavor =
-    includesDependencies ghcFlavor ++
-    derivedConstantsDependencies ghcFlavor ++
-    compilerDependencies ghcFlavor ++
-    platformH ghcFlavor ++
-    fingerprint ghcFlavor ++
-    packageCode ghcFlavor ++
-    generatedParser ghcFlavor ++
-    cHeaders ghcFlavor
+-- | Cabal "extra-source-files" files for ghc-lib-parser. Depending on
+-- the context we may wish to substitute for names in the fundamental
+-- list we calculate here. Hence the association list argument and the
+-- fold.
+ghcLibParserExtraFiles :: GhcFlavor -> [(FilePath, FilePath)] -> [FilePath]
+ghcLibParserExtraFiles ghcFlavor = foldl' f files
+  where
+    f :: [FilePath] -> (FilePath, FilePath) -> [FilePath]
+    f acc (s, r) = replace [s] [r] acc -- Substitute 'r for 's' in acc.
 
--- | Cabal "extra-source-files" for ghc-lib.
-ghcLibExtraFiles :: GhcFlavor -> [FilePath]
-ghcLibExtraFiles ghcFlavor =
-    includesDependencies ghcFlavor ++
-    derivedConstantsDependencies ghcFlavor ++
-    compilerDependencies ghcFlavor ++
-    platformH ghcFlavor ++
-    fingerprint ghcFlavor ++
-    cHeaders ghcFlavor
+    files :: [FilePath]
+    files =
+      includesDependencies ghcFlavor ++
+      derivedConstantsDependencies ghcFlavor ++
+      compilerDependencies ghcFlavor ++
+      platformH ghcFlavor ++
+      fingerprint ghcFlavor ++
+      packageCode ghcFlavor ++
+      generatedParser ghcFlavor ++
+      cHeaders ghcFlavor
+
+
+-- | Cabal "extra-source-files" for ghc-lib. Depending on the context
+-- we may wish to substitute for names in the fundamental list we
+-- calculate here. Hence the association list argument and the fold.
+ghcLibExtraFiles :: GhcFlavor -> [(FilePath, FilePath)] -> [FilePath]
+ghcLibExtraFiles ghcFlavor = foldl' f files
+  where
+    f :: [FilePath] -> (FilePath, FilePath) -> [FilePath]
+    f acc (s, r) = replace [s] [r] acc -- Substitue 'r' for 's' in acc.
+
+    files :: [FilePath]
+    files =
+      includesDependencies ghcFlavor ++
+      derivedConstantsDependencies ghcFlavor ++
+      compilerDependencies ghcFlavor ++
+      platformH ghcFlavor ++
+      fingerprint ghcFlavor ++
+      cHeaders ghcFlavor
 
 -- | Calculate via `ghc -M` the list of modules that are required for
 -- 'ghc-lib-parser'.
@@ -382,6 +407,24 @@ applyPatchHsVersions _ = do
         replace
           "HsVersions.h"
           "GhclibHsVersions.h"
+      =<< readFile' file
+
+-- Rename 'DerivedConstants.h' to 'GhclibDerivedConstants.h' then
+-- replace occurences of that string in all .hs,.hsc and .y files
+-- reachable from the 'compiler' directory.
+applyPatchDerivedConstants :: GhcFlavor -> IO ()
+applyPatchDerivedConstants ghcFlavor = do
+  let root = hadrianGeneratedRoot ghcFlavor
+      derivedConstantsH = root </> "DerivedConstants.h"
+      ghcLibDerivedConstantsH = root </> "GhclibDerivedConstants.h"
+  renameFile derivedConstantsH  ghcLibDerivedConstantsH
+  files <- filter ((`elem` [".hs", ".y", ".hsc"]) . takeExtension) <$> listFilesRecursive "compiler"
+  forM_ files $
+    \file ->
+      writeFile file .
+        replace
+          "DerivedConstants.h"
+          "GhclibDerivedConstants.h"
       =<< readFile' file
 
 -- Selectively disable optimizations in some particular files so as
@@ -854,8 +897,8 @@ generateGhcLibCabal ghcFlavor = do
         , "homepage: https://github.com/digital-asset/ghc-lib"
         , "bug-reports: https://github.com/digital-asset/ghc-lib/issues"
         , "data-dir: " ++ dataDir
-        , "data-files:"] ++ indent dataFiles ++
-        [ "extra-source-files:"] ++ indent (ghcLibExtraFiles ghcFlavor \\ [hadrianGeneratedRoot ghcFlavor </> "ghcversion.h"]) ++
+        , "data-files:"] ++ indent (dataFiles ghcFlavor) ++
+        [ "extra-source-files:"] ++ indent (ghcLibExtraFiles ghcFlavor [(hadrianGeneratedRoot ghcFlavor </> "DerivedConstants.h", hadrianGeneratedRoot ghcFlavor </> "GhclibDerivedConstants.h")]  \\ [hadrianGeneratedRoot ghcFlavor </> "ghcversion.h"]) ++
         [ "source-repository head"
         , "    type: git"
         , "    location: git@github.com:digital-asset/ghc-lib.git"
@@ -923,8 +966,8 @@ generateGhcLibParserCabal ghcFlavor = do
         , "bug-reports: https://github.com/digital-asset/ghc-lib/issues"
         , "data-dir: " ++ dataDir
         , "data-files:"
-        ] ++ indent dataFiles ++
-        [ "extra-source-files:"] ++ indent (ghcLibParserExtraFiles ghcFlavor \\ [hadrianGeneratedRoot ghcFlavor </> "ghcversion.h"]) ++
+        ] ++ indent (dataFiles ghcFlavor) ++
+        [ "extra-source-files:"] ++ indent (ghcLibParserExtraFiles ghcFlavor [(hadrianGeneratedRoot ghcFlavor </> "DerivedConstants.h", hadrianGeneratedRoot ghcFlavor </> "GhclibDerivedConstants.h")] \\ [hadrianGeneratedRoot ghcFlavor </> "ghcversion.h"]) ++
         [ "source-repository head"
         , "    type: git"
         , "    location: git@github.com:digital-asset/ghc-lib.git"
@@ -1002,7 +1045,7 @@ generatePrerequisites ghcFlavor = do
           , "--build-root=ghc-lib"
         ] ++
         (if ghcFlavor >= Ghc901 then ["--bignum=native"] else ["--integer-simple"]) ++
-        ghcLibParserExtraFiles ghcFlavor ++ map (dataDir </>) dataFiles
+        ghcLibParserExtraFiles ghcFlavor [] ++ map (dataDir </>) (dataFiles ghcFlavor)
 
   -- We use the hadrian generated Lexer and Parser so get these out
   -- of the way.
