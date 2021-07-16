@@ -37,7 +37,9 @@ runTest :: GhcVersion -> String -> Bool
 runTest flavor f =
   (isNothing . stripInfix "Main.hs" $ f) &&
   ((isNothing . stripInfix "MiniHlintTest_respect_dynamic_pragma.hs" $ f) || (flavor >= Ghc8101)) &&
-  ((isNothing . stripInfix "MiniHlintTest_non_fatal_error.hs" $ f) || (flavor >= Ghc8101))
+  -- Temporarily disabled on master.
+  -- See https://gitlab.haskell.org/ghc/ghc/-/merge_requests/6087#note_365110
+  ((isNothing . stripInfix "MiniHlintTest_non_fatal_error.hs" $ f) || (flavor >= Ghc8101 && flavor /= GhcMaster ))
 
 goldenTests :: StackYaml -> Resolver -> GhcFlavor -> [FilePath] -> TestTree
 goldenTests stackYaml resolver (GhcFlavor ghcFlavor) hsFiles =
