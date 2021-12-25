@@ -47,6 +47,7 @@ data StackOptions = StackOptions
 
 data GhcFlavor = Ghc921
                | Ghc901
+               | Ghc902
                | Ghc8101
                | Ghc8102
                | Ghc8103
@@ -64,7 +65,7 @@ data GhcFlavor = Ghc921
 
 -- Last tested gitlab.haskell.org/ghc/ghc.git at
 current :: String
-current = "9dcb2ad15df54e209cfae3dd1f51cf8e8d6c69d5" -- 2021-11-24
+current = "80daefce4ec1169ac3ef0552b8600c71527d84c2" -- 2021-12-24
 
 -- Command line argument generators.
 
@@ -82,6 +83,7 @@ ghcFlavorOpt :: GhcFlavor -> String
 ghcFlavorOpt = \case
     Ghc921 -> "--ghc-flavor ghc-9.2.1"
     Ghc901 -> "--ghc-flavor ghc-9.0.1"
+    Ghc902 -> "--ghc-flavor ghc-9.0.2"
     Ghc8101 -> "--ghc-flavor ghc-8.10.1"
     Ghc8102 -> "--ghc-flavor ghc-8.10.2"
     Ghc8103 -> "--ghc-flavor ghc-8.10.3"
@@ -116,6 +118,7 @@ genVersionStr = \case
    GhcMaster _ -> \day -> "0." ++ replace "-" "" (showGregorian day)
    Ghc921      -> \day -> "9.2.1." ++ replace "-" "" (showGregorian day)
    Ghc901      -> \day -> "9.0.1." ++ replace "-" "" (showGregorian day)
+   Ghc902      -> \day -> "9.0.2." ++ replace "-" "" (showGregorian day)
    Ghc8101     -> \day -> "8.10.1." ++ replace "-" "" (showGregorian day)
    Ghc8102     -> \day -> "8.10.2." ++ replace "-" "" (showGregorian day)
    Ghc8103     -> \day -> "8.10.3." ++ replace "-" "" (showGregorian day)
@@ -147,6 +150,7 @@ parseOptions = Options
    readFlavor = Opts.eitherReader $ \case
        "ghc-9.2.1" -> Right Ghc921
        "ghc-9.0.1" -> Right Ghc901
+       "ghc-9.0.2" -> Right Ghc902
        "ghc-8.10.1" -> Right Ghc8101
        "ghc-8.10.2" -> Right Ghc8102
        "ghc-8.10.3" -> Right Ghc8103
@@ -249,6 +253,7 @@ buildDists
     case ghcFlavor of
         Ghc921 -> cmd "cd ghc && git checkout ghc-9.2.1-release"
         Ghc901 -> cmd "cd ghc && git checkout ghc-9.0.1-release"
+        Ghc902 -> cmd "cd ghc && git checkout ghc-9.0.2-release"
         Ghc8101 -> cmd "cd ghc && git checkout ghc-8.10.1-release"
         Ghc8102 -> cmd "cd ghc && git checkout ghc-8.10.2-release"
         Ghc8103 -> cmd "cd ghc && git checkout ghc-8.10.3-release"
