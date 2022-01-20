@@ -42,6 +42,7 @@ ghclibgen (GhclibgenOpts root target ghcFlavor) =
     init ghcFlavor = do
         applyPatchHadrianStackYaml ghcFlavor
         applyPatchHeapClosures ghcFlavor
+        applyPatchFfiClosuresProfiling ghcFlavor
         applyPatchRtsIncludePaths ghcFlavor
         applyPatchGhcPrim ghcFlavor
         applyPatchDisableCompileTimeOptimizations ghcFlavor

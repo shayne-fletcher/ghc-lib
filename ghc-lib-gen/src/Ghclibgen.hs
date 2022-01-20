@@ -12,6 +12,7 @@
 
 module Ghclibgen (
     applyPatchHeapClosures
+  , applyPatchFfiClosuresProfiling
   , applyPatchAclocal
   , applyPatchHsVersions
   , applyPatchGhcPrim
@@ -618,6 +619,34 @@ applyPatchHaddockHs ghcFlavor = do
   where
     haddockHs = "compiler/GHC/Parser/PostProcess/Haddock.hs"
     ffiClosuresHs = "libraries/ghc-heap/GHC/Exts/Heap/FFIClosures.hs"
+
+applyPatchFfiClosuresProfiling :: GhcFlavor -> IO ()
+applyPatchFfiClosuresProfiling ghcFlavor = do
+  when (ghcFlavor > Ghc902) (
+    writeFile ffiClosuresProfilingEnabledHsc .
+      replace
+        (unlines [
+            "#if __GLASGOW_HASKELL__ >= 811 && __GLASGOW_HASKELL__ < 903"
+          , "                        (#const BlockedOnIOCompletion) -> BlockedOnIOCompletion"
+          , "#endif"
+          ])
+        ""
+    =<< readFile' ffiClosuresProfilingEnabledHsc
+    )
+  when (ghcFlavor > Ghc902) (
+    writeFile ffiClosuresProfilingDisabledHsc .
+      replace
+        (unlines [
+            "#if __GLASGOW_HASKELL__ >= 811 && __GLASGOW_HASKELL__ < 903"
+          , "                        (#const BlockedOnIOCompletion) -> BlockedOnIOCompletion"
+          , "#endif"
+          ])
+        ""
+    =<< readFile' ffiClosuresProfilingDisabledHsc
+    )
+  where
+    ffiClosuresProfilingEnabledHsc = "libraries/ghc-heap/GHC/Exts/Heap/FFIClosures_ProfilingEnabled.hsc"
+    ffiClosuresProfilingDisabledHsc = "libraries/ghc-heap/GHC/Exts/Heap/FFIClosures_ProfilingDisabled.hsc"
 
 -- Support for unboxed tuples got landed 03/20/2021
 -- (https://gitlab.haskell.org/ghc/ghc/-/commit/1f94e0f7601f8e22fdd81a47f130650265a44196#4ec156a7b95e9c7a690c99bc79e6e0edf60a51dc)
