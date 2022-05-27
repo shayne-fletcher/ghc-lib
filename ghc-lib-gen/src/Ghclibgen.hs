@@ -908,7 +908,23 @@ applyPatchHadrianStackYaml ghcFlavor = do
                                      (toHashMap config)
 #endif
           )
-  Y.encodeFile hadrianStackYaml config'
+    -- [Note: Temp hack "ghc-9.4.1-alpha2 does not compile with ghc XXX"]
+    -- ------------------------------------------------------------------
+    -- See for example
+    -- https://gitlab.haskell.org/ghc/ghc/-/issues/21633 &
+    -- https://gitlab.haskell.org/ghc/ghc/-/issues/21634.
+    --
+    -- The idea is to replace the resolver with a ghc-9.2.2 resolver.
+    --
+    -- The reason for this is to maintain signal on hlint w/9.4.1
+    -- parse tree while waiting for fixes.
+      config'' = if ghcFlavor /= Ghc941
+                     then config'
+                     else
+                         HMS.insert "allow-newer" (toJSON True)
+                           (HMS.update (\_ -> Just "nightly-2022-05-27") "resolver" config')
+
+  Y.encodeFile hadrianStackYaml config''
 
 -- | Data type representing an approximately parsed Cabal file.
 data Cabal = Cabal
