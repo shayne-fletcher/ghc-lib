@@ -60,9 +60,9 @@ Building `ghc-lib` is subject to the same minimum version requirements that appl
 | ---------- |:----------:|:---------:|
 | ghc-8.8.*  | 8.4.4      | 8.10.1    |
 | ghc-8.10.* | 8.6.5      | 9.0.1     |
-| ghc-9.0.1  | 8.8.1      | 9.2.1     |
-| ghc-9.2.1  | 8.10.1     |           |
-| ghc-master | 8.10.1     |           |
+| ghc-9.0.*  | 8.8.1      | 9.2.1     |
+| ghc-9.2.*  | 8.10.1     |           |
+| ghc-master | 9.0.2      |           |
 
 ### How do I use the `ghc-lib`/`ghc-lib-parser` version macros?
 
