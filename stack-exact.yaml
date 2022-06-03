@@ -7,14 +7,7 @@
 # You can add --resolver xxx to the above command to have the effect
 # of overriding the choice of compiler if desired.
 
-# Stack 8.10 builds generate a lot of warnings of this kind.
-#   Warning: Failed to decode module interface:
-#            some/path/to/Main.hi
-#            Decoding failure: Invalid magic: e49ceb0f
-# This is a known upstream issue (see
-# https://github.com/commercialhaskell/stack/issues/5134).
-
-resolver: ghc-9.2.2
+resolver: ghc-9.2.3
 
 ghc-options:
   # Try to be quick.
