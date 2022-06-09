@@ -355,8 +355,9 @@ buildDists
     cmd "git checkout stack.yaml"
 
     -- Make and extract an sdist of ghc-lib.
-    cmd "cd ghc && git checkout ."
-    stack $ "exec -- ghc-lib-gen ghc --ghc-lib " ++ ghcFlavorOpt ghcFlavor ++ " " ++ cppOpts ghcFlavor
+    -- cmd "cd ghc && git checkout ."
+    cmd "cd ghc"
+    stack $ "exec -- ghc-lib-gen ghc --ghc-lib " ++ ghcFlavorOpt ghcFlavor ++ " " ++ cppOpts ghcFlavor ++ " " ++ "--skip-init"
     patchVersion version "ghc/ghc-lib.cabal"
     patchConstraint version "ghc/ghc-lib.cabal"
     mkTarball pkg_ghclib
