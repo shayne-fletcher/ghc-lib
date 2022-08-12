@@ -30,8 +30,8 @@ extra-deps:
 - clock-0.8.3
 - colour-2.3.6
 - extra-1.7.10
-- mintty-0.1.4 # windows specific (but it does no harm).
-- Win32-2.12.0.1 # new mintty dependency
+- mintty-0.1.4
+# - Win32-2.13.3.0
 - optparse-applicative-0.17.0.0
 - transformers-compat-0.7.2
 # ghc-lib-gen has recently started depending on yaml
@@ -86,6 +86,10 @@ extra-deps:
 - unbounded-delays-0.1.1.1
 - unix-compat-0.5.4
 - wcwidth-0.0.2
+
+flags:
+  mintty:
+    win32-2-13-1: false  
 
 # Packages MUST go at the end, since we append to it during the CI.hs
 # script.
