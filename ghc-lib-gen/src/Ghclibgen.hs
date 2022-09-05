@@ -1159,8 +1159,7 @@ generateGhcLibCabal ghcFlavor customCppOpts = do
         , "    include-dirs:"
         ] ++
         indent2 (ghcLibIncludeDirs ghcFlavor) ++
-        [ "    ghc-options: -fobject-code -package=ghc-boot-th -optc-DTHREADED_RTS"
-        , "    cc-options: -DTHREADED_RTS"
+        [ "    ghc-options: -fobject-code -package=ghc-boot-th"
         , "    cpp-options: " <> generateCppOpts ghcFlavor customCppOpts
         , "    if !os(windows)"
         , "        build-depends: unix"
@@ -1188,7 +1187,6 @@ generateCppOpts :: GhcFlavor -> [String] -> String
 generateCppOpts ghcFlavor customCppOpts =
   unwords $
     [ ghcStageDef ghcFlavor
-    , "-DTHREADED_RTS"
     , ghciDef ghcFlavor
     , ghcInGhciDef ghcFlavor
     ]
@@ -1257,8 +1255,7 @@ generateGhcLibParserCabal ghcFlavor customCppOpts = do
         , "    default-language:   Haskell2010"
         , "    exposed: False"
         , "    include-dirs:"] ++ indent2 (ghcLibParserIncludeDirs ghcFlavor) ++
-        [ "    ghc-options: -fobject-code -package=ghc-boot-th -optc-DTHREADED_RTS"
-        , "    cc-options: -DTHREADED_RTS"
+        [ "    ghc-options: -fobject-code -package=ghc-boot-th"
         , "    cpp-options: " <> generateCppOpts ghcFlavor customCppOpts
         , "    if !os(windows)"
         , "        build-depends: unix"
