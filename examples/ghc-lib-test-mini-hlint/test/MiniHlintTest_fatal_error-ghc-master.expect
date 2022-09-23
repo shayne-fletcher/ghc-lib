@@ -1,5 +1,5 @@
 
-test/MiniHlintTest_fatal_error.hs:11:1: error:
+test/MiniHlintTest_fatal_error.hs:11:1: error: [GHC-58481]
     parse error on input `{'
    |
 11 | {

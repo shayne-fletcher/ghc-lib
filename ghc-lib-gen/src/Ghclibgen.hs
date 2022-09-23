@@ -25,7 +25,7 @@ module Ghclibgen (
   , applyPatchNoMonoLocalBinds
   , applyPatchCmmParseNoImplicitPrelude
   , applyPatchHadrianStackYaml
-  , applyPatchTemplateHaskellCabal
+  , applyPatchVendorFilePath
   , generatePrerequisites
   , mangleCSymbols
   , generateGhcLibCabal
@@ -152,7 +152,8 @@ ghcLibHsSrcDirs ghcFlavor lib =
         , "libraries/ghc-boot-th"
         , "libraries/ghc-heap"
         ] ++
-        [ "compiler/cmm" | ghcFlavor >= Ghc901 ]
+        [ "compiler/cmm" | ghcFlavor >= Ghc901 ] ++
+        [ "libraries/template-haskell/vendored-filepath" | ghcFlavor == GhcMaster ]
 
   in sortDiffListByLength all excludes -- Not so important. Here for symmetry with 'ghcLibParserHsSrcDirs' I think.
 
@@ -401,9 +402,9 @@ calcParserModules ghcFlavor = do
         ]
   return $ nubSort (modules ++ extraModules)
 
-applyPatchTemplateHaskellCabal :: GhcFlavor -> IO ()
-applyPatchTemplateHaskellCabal ghcFlavor = do
-  when (ghcFlavor >= Ghc941) $ do
+applyPatchVendorFilePath :: GhcFlavor -> IO ()
+applyPatchVendorFilePath ghcFlavor = do
+  when (ghcFlavor >= Ghc941 && ghcFlavor < GhcMaster) $ do
     -- In
     -- https://gitlab.haskell.org/ghc/ghc/-/commit/b151b65ec469405dcf25f9358e7e99bcc8c2b3ac
     -- (2022/7/05) a temporary change is made to provide for vendoring
@@ -441,6 +442,19 @@ applyPatchTemplateHaskellCabal ghcFlavor = do
           ])
           "        filepath"
       =<< readFile' "libraries/template-haskell/template-haskell.cabal.in"
+
+  when (ghcFlavor == GhcMaster) $ do
+    -- As of
+    -- https://gitlab.haskell.org/ghc/ghc/-/commit/9034fadaf641c3821db6e066faaf1a62ed236c13
+    -- we now always rely on vendored filepath: System.FilePath,
+    -- System.FilePath.Posix.
+
+    -- The ghc-lib-parser cabal file says `Default Extensions:
+    -- ImplicitPrelude` so I unhappily can't tell you why I have to do
+    -- this but ghc-lib-parser builds will fail without it.
+    writeFile "libraries/template-haskell/vendored-filepath/System/FilePath/Posix.hs" .
+      replace "{-# LANGUAGE PatternGuards #-}" "{-# LANGUAGE PatternGuards, ImplicitPrelude #-}"
+        =<< readFile' "libraries/template-haskell/vendored-filepath/System/FilePath/Posix.hs"
 
 -- Avoid duplicate symbols with HSghc-heap (see issue
 -- https://github.com/digital-asset/ghc-lib/issues/210).
@@ -1088,10 +1102,11 @@ commonBuildDepends ghcFlavor =
         []
     -- shared for all flavors
     shared =
+      ["filepath >= 1 && < 1.5" | ghcFlavor /= GhcMaster]
+      ++
       [
         "containers >= 0.5 && < 0.7"
       , "binary == 0.8.*"
-      , "filepath >= 1 && < 1.5"
       , "directory >= 1 && < 1.4"
       , "array >= 0.1 && < 0.6"
       , "deepseq >= 1.4 && < 1.5"
@@ -1099,6 +1114,7 @@ commonBuildDepends ghcFlavor =
       , "transformers == 0.5.*"
       , "process >= 1 && < 1.7"
       ]
+
 
 ghcLibParserBuildDepends :: GhcFlavor -> [String]
 ghcLibParserBuildDepends  = commonBuildDepends

@@ -1,5 +1,5 @@
 
-test/MiniHlintTest_non_fatal_error.hs:8:18: error:
+test/MiniHlintTest_non_fatal_error.hs:8:18: error: [GHC-87491]
     Found `qualified' in postpositive position. 
     Suggested fix: Perhaps you intended to use ImportQualifiedPost
   |

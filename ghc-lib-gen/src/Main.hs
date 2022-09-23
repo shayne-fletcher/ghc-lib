@@ -45,7 +45,7 @@ ghclibgen (GhclibgenOpts root target ghcFlavor skipInit cppOpts) =
 
     init :: GhcFlavor -> IO ()
     init ghcFlavor = do
-        applyPatchTemplateHaskellCabal ghcFlavor
+        applyPatchVendorFilePath ghcFlavor
         applyPatchHadrianStackYaml ghcFlavor
         applyPatchHeapClosures ghcFlavor
         applyPatchRtsIncludePaths ghcFlavor
