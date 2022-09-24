@@ -47,23 +47,21 @@ strategy:
     # | windows | ghc-master      | ghc-9.4.2  |
     # +---------+-----------------+------------+
 
-    # enable when resolver ghc-9.4.2 exists
-
-    # linux-ghc-master-9.4.2:
-    #   image: "ubuntu-latest"
-    #   mode: "--ghc-flavor ghc-master"
-    #   resolver: "ghc-9.4.2"
-    #   stack-yaml: "stack-exact.yaml"
-    # mac-ghc-master-9.4.2:
-    #   image: "macOS-latest"
-    #   mode: "--ghc-flavor ghc-master"
-    #   resolver: "ghc-9.4.2"
-    #   stack-yaml: "stack-exact.yaml"
-    # windows-ghc-master-9.4.2:
-    #   image: "windows-latest"
-    #   mode: "--ghc-flavor ghc-master"
-    #   resolver: "ghc-9.4.2"
-    #   stack-yaml: "stack-exact.yaml"
+    linux-ghc-master-9.4.2:
+      image: "ubuntu-latest"
+      mode: "--ghc-flavor ghc-master"
+      resolver: "ghc-9.4.2"
+      stack-yaml: "stack-exact.yaml"
+    mac-ghc-master-9.4.2:
+      image: "macOS-latest"
+      mode: "--ghc-flavor ghc-master"
+      resolver: "ghc-9.4.2"
+      stack-yaml: "stack-exact.yaml"
+    windows-ghc-master-9.4.2:
+      image: "windows-latest"
+      mode: "--ghc-flavor ghc-master"
+      resolver: "ghc-9.4.2"
+      stack-yaml: "stack-exact.yaml"
 
     # +---------+-----------------+------------+
     # | OS      | ghc-lib flavor  | GHC        |
