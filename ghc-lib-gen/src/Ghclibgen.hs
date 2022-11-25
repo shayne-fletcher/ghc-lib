@@ -298,6 +298,10 @@ parsersAndLexers ghcFlavor =
 -- | Cabal "extra-source-files" files for ghc-lib-parser.
 ghcLibParserExtraFiles :: GhcFlavor -> [FilePath]
 ghcLibParserExtraFiles ghcFlavor =
+      -- It's no longer `configure` that does the substitutions on the
+      -- '.cabal.in' files to produce the '.cabal' files, rather,
+      -- hadrian.
+      [ f | ghcFlavor > Ghc943, f <- cabalFileBinary : cabalFileLibraries ] ++
       rtsDependencies ghcFlavor ++
       compilerDependencies ghcFlavor ++
       platformH ghcFlavor ++
