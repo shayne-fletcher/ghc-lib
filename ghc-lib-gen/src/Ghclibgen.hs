@@ -204,7 +204,7 @@ dataFiles ghcFlavor =
 
 cabalFileDependencies :: GhcFlavor -> [FilePath]
 cabalFileDependencies ghcFlavor =
-  [ f | ghcFlavor > Ghc943, f <- cabalFileBinary : cabalFileLibraries ]
+  [ f | ghcFlavor > Ghc944, f <- cabalFileBinary : cabalFileLibraries ]
 
 rtsDependencies :: GhcFlavor -> [FilePath]
 rtsDependencies ghcFlavor =
@@ -1084,6 +1084,7 @@ baseBounds ghcFlavor =
     Ghc941   -> "base >= 4.15 && < 4.18" -- [ghc-9.0.1, ghc-9.6.1)
     Ghc942   -> "base >= 4.15 && < 4.18" -- [ghc-9.0.1, ghc-9.6.1)
     Ghc943   -> "base >= 4.15 && < 4.18" -- [ghc-9.0.1, ghc-9.6.1)
+    Ghc944   -> "base >= 4.15 && < 4.18" -- [ghc-9.0.1, ghc-9.6.1)
 
     GhcMaster -> "base > 4.16 && < 4.18" -- [ghc-9.2.1, ghc-9.6.1)
 
