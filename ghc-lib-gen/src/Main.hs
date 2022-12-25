@@ -45,6 +45,7 @@ ghclibgen (GhclibgenOpts root target ghcFlavor skipInit cppOpts resolver) = do
 
     init :: GhcFlavor -> IO ()
     init ghcFlavor = do
+        applyPatchGetWin32TarballsPy ghcFlavor
         applyPatchTemplateHaskellCabal ghcFlavor
         applyPatchHadrianStackYaml ghcFlavor resolver
         applyPatchHeapClosures ghcFlavor
