@@ -11,6 +11,7 @@
 
 module Ghclibgen (
     applyPatchHeapClosures
+  , applyPatchGetWin32TarballsPy
   , applyPatchAclocal
   , applyPatchHsVersions
   , applyPatchGhcPrim
@@ -405,6 +406,13 @@ calcParserModules ghcFlavor = do
         , if ghcFlavor >= Ghc8101 then "GHC.Hs.Dump" else "HsDumpAst"
         ]
   return $ nubSort (modules ++ extraModules)
+
+applyPatchGetWin32TarballsPy :: GhcFlavor -> IO ()
+applyPatchGetWin32TarballsPy ghcFlavor = do
+  when (ghcFlavor >= Ghc8101) $ do
+    writeFile "mk/get-win32-tarballs.py" .
+      replace "https" "http"
+      =<< readFile' "mk/get-win32-tarballs.py"
 
 applyPatchTemplateHaskellCabal :: GhcFlavor -> IO ()
 applyPatchTemplateHaskellCabal ghcFlavor = do
