@@ -174,10 +174,5 @@ steps:
     displayName: run hlint
     condition: eq( variables['Agent.OS'], 'Linux' )
   - bash: |
-      stack exec --stack-yaml $(stack-yaml) --resolver $(resolver) --package extra --package optparse-applicative ghc -- -package extra -package optparse-applicative -Wall -Wno-name-shadowing -Werror -c CI.hs
-      stack exec --stack-yaml $(stack-yaml) --resolver $(resolver) -- pacman -Syu --noconfirm
-    condition: eq(variables['Agent.OS'], 'Windows_NT')
-    displayName: Windows pre-build
-  - bash: |
       stack runhaskell --stack-yaml $(stack-yaml) --resolver $(resolver) --package extra --package optparse-applicative -- CI.hs $(mode)  --stack-yaml $(stack-yaml) --resolver $(resolver)
-    displayName: build
+    displayName:  build
