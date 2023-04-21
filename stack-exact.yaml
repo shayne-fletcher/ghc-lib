@@ -90,6 +90,16 @@ extra-deps:
 - unix-compat-0.6
 - wcwidth-0.0.2
 
+# Since Apr 2023 ghc depends on semaphore-compat. It is set to be a
+# boot library but for now we can go to Hackage. It depends on unix
+# and Win32 both of which are boot libraries. ghc-9.6.1 ships with a
+# recent enough version of unix (2.8.1.0) but not Win32 where 2.13.4.0
+# is needed but ghc-9.6.1 comes with 2.13.3 so now we can't build
+# master on Windows. ghc-9.4.4 ships with unix-2.7.3 so that can't be
+# used to build on any platform.
+
+- semaphore-compat-1.0.0
+
 flags:
   # Win32 is a compiler lib, the version with ghc-9.6.1 is 2.13.3.0
   # (https://www.snoyman.com/base/)

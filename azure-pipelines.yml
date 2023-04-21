@@ -57,11 +57,14 @@ strategy:
       mode: "--ghc-flavor ghc-master"
       resolver: "ghc-9.6.1"
       stack-yaml: "stack-exact.yaml"
-    windows-ghc-master-9.6.1:
-      image: "windows-latest"
-      mode: "--ghc-flavor ghc-master"
-      resolver: "ghc-9.6.1"
-      stack-yaml: "stack-exact.yaml"
+    # 'semaphore-compat' (Apr 2023) requires Win32-2.13.4 but Win32 is
+    # a boot lib and ghc-9.6.1 ships with 2.13.3. I haven't yet found
+    # a way to get a build plan for this scenario.
+    # windows-ghc-master-9.6.1:
+    #   image: "windows-latest"
+    #   mode: "--ghc-flavor ghc-master"
+    #   resolver: "ghc-9.6.1"
+    #   stack-yaml: "stack-exact.yaml"
 
     # +---------+-----------------+------------+
     # | OS      | ghc-lib flavor  | GHC        |

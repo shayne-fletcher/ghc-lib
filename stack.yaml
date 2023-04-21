@@ -1,5 +1,8 @@
 resolver: nightly-2023-02-04 # ghc-9.4.4
 
+extra-deps:
+- semaphore-compat-1.0.0
+
 ghc-options:
   # try and speed up recompilation on the CI server
   "$everything": -O0 -j

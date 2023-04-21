@@ -1024,6 +1024,11 @@ commonBuildDepends ghcFlavor =
     -- base
     base = [ baseBounds ghcFlavor ]
     specific
+       | ghcSeries ghcFlavor >= Ghc97 = [
+           "ghc-prim > 0.2 && < 0.11"
+         , "bytestring >= 0.11.3 && < 0.12"
+         , "time >= 1.4 && < 1.13"
+         ]
        | ghcSeries ghcFlavor >= Ghc96  = [
            "ghc-prim > 0.2 && < 0.11"
          , "bytestring >= 0.11.3 && < 0.12"
@@ -1045,6 +1050,13 @@ commonBuildDepends ghcFlavor =
           , "time >= 1.4 && < 1.10"
           ]
     conditional
+        | ghcSeries ghcFlavor >= Ghc97 = [
+            "exceptions == 0.10.*"
+          , "parsec"
+            -- Dependency added after ghc-9.6.1. New boot lib that
+            -- depends on the boot libs unix and win32.
+          , "semaphore-compat"
+         ]
         | ghcSeries ghcFlavor >= Ghc90 = [
             "exceptions == 0.10.*"
           , "parsec"
