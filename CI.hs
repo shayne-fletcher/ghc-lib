@@ -71,7 +71,7 @@ data DaFlavor = DaFlavor
 
 -- Last tested gitlab.haskell.org/ghc/ghc.git at
 current :: String
-current = "4eaf2c2a7682fa9933261f5eb25da9e2333c9608" -- 2023-04-27
+current = "994bda563604461ffb8454d6e298b0310520bcc8" -- 2023-05-06
 
 -- Command line argument generators.
 
@@ -326,14 +326,21 @@ buildDists
     --      git fetch --tags && git submodule update --init --recursive
     -- and it won't be deleted between runs.
     if noGhcCheckout then
-      cmd "cd ghc && git clean -xdf && git submodule foreach git clean -xdf && git submodule foreach git checkout . && git checkout ."
+      cmd "cd ghc && git remote remove upstream || true && git clean -xdf && git submodule foreach git clean -xdf && git submodule foreach git checkout . && git checkout ."
     else do
       cmd "git clone https://gitlab.haskell.org/ghc/ghc.git"
       cmd "cd ghc && git fetch --tags"
     gitCheckout ghcFlavor
 
+    -- Doing this avoids "Prelude.chr:bad argument" errors
+    -- (https://gitlab.haskell.org/ghc/ghc/-/issues/19452) testing
+    -- locally when later steps try to certain install older versions
+    -- of GHC which enables local testing with `stack runhaskell --stack-yaml stack.yaml --resolver nightly-2020-01-08 --package extra --package optparse-applicative CI.hs -- --da --stack-yaml stack.yaml --resolver nightly-2020-01-08`.
+    stack "exec -- bash -c \"rm -f $HOME/.stack/setup-exe-src/*\""
+
     -- Feedback on the compiler used for ghc-lib-gen.
     stack "exec -- ghc --version"
+
     -- Build ghc-lib-gen. Do this here rather than in the Azure script
     -- so that it's not forgotten when testing this program locally.
     stack "build --no-terminal --ghc-options \"-Wall -Wno-name-shadowing -Werror\""
