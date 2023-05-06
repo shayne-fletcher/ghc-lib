@@ -15,16 +15,11 @@ build-type:          Simple
 
 library
   build-depends:     base >=4.10
-                     , process >=1.6
                      , filepath >=1.4
                      , containers
                      , directory
                      , optparse-applicative
-                     , bytestring
-                     , yaml
-                     , aeson
                      , text
-                     , unordered-containers
                      , extra >=1.6
   hs-source-dirs:    ghc-lib-gen/src
   exposed-modules:   Ghclibgen
@@ -32,6 +27,10 @@ library
                      GhclibgenOpts
   other-modules:     Paths_ghc_lib_gen
   autogen-modules:   Paths_ghc_lib_gen
+
+  if impl(ghc >= 9.2.7)
+    ghc-options:       -Werror=unused-packages
+
   default-language:  Haskell2010
 
 executable ghc-lib-gen

@@ -73,6 +73,7 @@ data DaFlavor = DaFlavor
 current :: String
 current = "994bda563604461ffb8454d6e298b0310520bcc8" -- 2023-05-06
 
+
 -- Command line argument generators.
 
 stackYamlOpt :: Maybe FilePath -> String
@@ -359,6 +360,8 @@ buildDists
     -- Make and extract an sdist of ghc-lib. The first argument is a
     -- ghc repo dir relative to '.' ('root'), 'patches' needs to be
     -- provided relative to 'root' (i.e. 'ghc') hence '../patches'.
+    stack $ "exec -- bash -c \"rm -f $HOME/.stack/setup-exe-src/*\""
+
     stack $ "exec -- ghc-lib-gen ghc ../patches --ghc-lib-parser " ++ ghcFlavorOpt ghcFlavor ++ " " ++ cppOpts ghcFlavor ++ " " ++ stackResolverOpt resolver
     patchVersion version "ghc/ghc-lib-parser.cabal"
     mkTarball pkg_ghclib_parser
@@ -369,6 +372,7 @@ buildDists
     -- Make and extract an sdist of ghc-lib. The first argument is a
     -- ghc repo dir relative to '.' ('root'), 'patches' needs to be
     -- provided relative to 'root' (i.e. 'ghc') hence '../patches'.
+    stack $ "exec -- bash -c \"rm -f $HOME/.stack/setup-exe-src/*\""
     stack $ "exec -- ghc-lib-gen ghc ../patches --ghc-lib " ++ ghcFlavorOpt ghcFlavor ++ " " ++ cppOpts ghcFlavor ++ " " ++ stackResolverOpt resolver ++ " " ++ "--skip-init"
     patchVersion version "ghc/ghc-lib.cabal"
     patchConstraints version "ghc/ghc-lib.cabal"
@@ -575,7 +579,8 @@ buildDists
 
       gitCheckout :: GhcFlavor -> IO ()
       gitCheckout ghcFlavor = do
-        cmd $ "cd ghc && git checkout -f " <> branch ghcFlavor
+        branch <- branch ghcFlavor
+        cmd $ "cd ghc && git checkout -f " <> branch
         case ghcFlavor of
           Da DaFlavor { patches, upstream } -> do
             cmd $ "cd ghc && git remote add upstream " <> upstream
@@ -584,33 +589,15 @@ buildDists
           _ -> pure ()
         cmd "cd ghc && git submodule update --init --recursive"
 
-      branch :: GhcFlavor -> String
+      branch :: GhcFlavor -> IO String
       branch = \case
-          Ghc961  -> "ghc-9.6.1-release"
-          Ghc945  -> "ghc-9.4.5-release"
-          Ghc944  -> "ghc-9.4.4-release"
-          Ghc943  -> "ghc-9.4.3-release"
-          Ghc942  -> "ghc-9.4.2-release"
-          Ghc941  -> "ghc-9.4.1-release"
-          Ghc927  -> "ghc-9.2.7-release"
-          Ghc926  -> "ghc-9.2.6-release"
-          Ghc925  -> "ghc-9.2.5-release"
-          Ghc924  -> "ghc-9.2.4-release"
-          Ghc923  -> "ghc-9.2.3-release"
-          Ghc922  -> "ghc-9.2.2-release"
-          Ghc921  -> "ghc-9.2.1-release"
-          Ghc901  -> "ghc-9.0.1-release"
-          Ghc902  -> "ghc-9.0.2-release"
-          Ghc8101 -> "ghc-8.10.1-release"
-          Ghc8102 -> "ghc-8.10.2-release"
-          Ghc8103 -> "ghc-8.10.3-release"
-          Ghc8104 -> "ghc-8.10.4-release"
-          Ghc8105 -> "ghc-8.10.5-release"
-          Ghc8106 -> "ghc-8.10.6-release"
-          Ghc8107 -> "ghc-8.10.7-release"
-          Ghc881  -> "ghc-8.8.1-release"
-          Ghc882  -> "ghc-8.8.2-release"
-          Ghc883  -> "ghc-8.8.3-release"
-          Ghc884  -> "ghc-8.8.4-release"
-          Da DaFlavor { mergeBaseSha } -> mergeBaseSha
-          GhcMaster hash -> hash
+          Ghc961  -> return "ghc-9.6.1-release"
+          Ghc945  -> return "ghc-9.4.5-release"
+          Ghc944  -> return "ghc-9.4.4-release"
+          Ghc943  -> return "ghc-9.4.3-release"
+          Ghc942  -> return "ghc-9.4.2-release"
+          Ghc941  -> return "ghc-9.4.1-release"
+          Ghc927  -> return "ghc-9.2.7-release"
+          Da DaFlavor { mergeBaseSha } -> return mergeBaseSha
+          GhcMaster hash -> return hash
+          _ -> die "unsupported ghc-flavor"

@@ -30,14 +30,12 @@ ghclibgen (GhclibgenOpts root patches target ghcFlavor skipInit cppOpts resolver
         when withInit $ init ghcFlavor
         mangleCSymbols ghcFlavor
         applyPatchStage ghcFlavor
-        applyPatchHaddockHs ghcFlavor
         applyPatchNoMonoLocalBinds ghcFlavor
         applyPatchTemplateHaskellLanguageHaskellTHSyntax patches ghcFlavor
         generateGhcLibParserCabal ghcFlavor cppOpts
       Ghclib -> do
         when withInit $ init ghcFlavor
         applyPatchCmmParseNoImplicitPrelude ghcFlavor
-        applyPatchRtsBytecodes ghcFlavor
         applyPatchGHCiInfoTable ghcFlavor
         generateGhcLibCabal ghcFlavor cppOpts
   where
@@ -53,7 +51,6 @@ ghclibgen (GhclibgenOpts root patches target ghcFlavor skipInit cppOpts resolver
         applyPatchHadrianStackYaml ghcFlavor resolver
         applyPatchHeapClosures ghcFlavor
         applyPatchRtsIncludePaths ghcFlavor
-        applyPatchGhcPrim ghcFlavor
         applyPatchDisableCompileTimeOptimizations ghcFlavor
         -- This line must come before 'generatePrerequisites':
         applyPatchAclocal ghcFlavor -- Do before ./boot && ./configure

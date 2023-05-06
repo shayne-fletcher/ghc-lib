@@ -14,9 +14,6 @@ module Ghclibgen (
     applyPatchHeapClosures
   , applyPatchAclocal
   , applyPatchHsVersions
-  , applyPatchGhcPrim
-  , applyPatchHaddockHs
-  , applyPatchRtsBytecodes
   , applyPatchGHCiInfoTable
   , applyPatchGHCiMessage
   , applyPatchDerivedConstants
@@ -48,17 +45,9 @@ import Data.List.Extra hiding (find)
 import Data.Char
 import Data.Maybe
 import Data.Ord
-import qualified Data.Set as Set
-
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import Data.Aeson.Types(parse, Result(..))
-#if MIN_VERSION_aeson(2, 0, 2)
-import Data.Aeson.KeyMap(toHashMap)
-#endif
-import qualified Data.Yaml as Y
-import Data.Yaml (ToJSON(..), (.:?), (.!=))
-import qualified Data.HashMap.Strict as HMS
+import qualified Data.Set as Set
 
 import GhclibgenFlavor
 
@@ -531,92 +520,8 @@ applyPatchGHCiInfoTable ghcFlavor = do
            , "_flushExec = error \"_flushExec stub for ghc-lib\""
            ])
       =<< readFile' infoTableHsc
-  when(ghcSeries ghcFlavor >= Ghc92) $ do
-    writeFile infoTableHsc .
-      replace
-        (unlines newExecConItblBefore)
-        ("#if MIN_VERSION_rts(1,0,1)\n"   <>
-           unlines newExecConItblBefore   <>
-         "#else\n"                        <>
-           unlines newExecConItblAfter    <>
-         "#endif\n") .
-      replace
-        "fillExecBuffer :: CSize -> (Ptr a -> Ptr a -> IO ()) -> IO (Ptr a)\n"
-        ("#if MIN_VERSION_rts(1,0,1)\n"                                           <>
-           "fillExecBuffer :: CSize -> (Ptr a -> Ptr a -> IO ()) -> IO (Ptr a)\n" <>
-         "#endif\n") .
-      replace
-        (if ghcSeries ghcFlavor >= Ghc94
-           then
-             "#error Sorry, rts versions <= 1.0 are not supported"
-           else
-             "#error hi"
-        )
-      (unlines [
-           "foreign import ccall unsafe \"allocateExec\""
-          , "  _allocateExec :: CUInt -> Ptr (Ptr a) -> IO (Ptr a)"
-          , ""
-          , "foreign import ccall unsafe \"flushExec\""
-          , "  _flushExec :: CUInt -> Ptr a -> IO ()" ]
-      )
-      =<< readFile' infoTableHsc
   where
     infoTableHsc = "libraries/ghci/GHCi/InfoTable.hsc"
-
-    newExecConItblBefore = [
-        "newExecConItbl :: Bool -> StgInfoTable -> ByteString -> IO (FunPtr ())"
-      , "newExecConItbl tables_next_to_code obj con_desc = do"
-      , "    sz0 <- sizeOfEntryCode tables_next_to_code"
-      , "    let lcon_desc = BS.length con_desc + 1{- null terminator -}"
-      , "        -- SCARY"
-      , "        -- This size represents the number of bytes in an StgConInfoTable."
-      , "        sz = fromIntegral $ conInfoTableSizeB + sz0"
-      , "            -- Note: we need to allocate the conDesc string next to the info"
-      , "            -- table, because on a 64-bit platform we reference this string"
-      , "            -- with a 32-bit offset relative to the info table, so if we"
-      , "            -- allocated the string separately it might be out of range."
-      , ""
-      , "    ex_ptr <- fillExecBuffer (sz + fromIntegral lcon_desc) $ \\wr_ptr ex_ptr -> do"
-      , "        let cinfo = StgConInfoTable { conDesc = ex_ptr `plusPtr` fromIntegral sz"
-      , "                                    , infoTable = obj }"
-      , "        pokeConItbl tables_next_to_code wr_ptr ex_ptr cinfo"
-      , "        BS.useAsCStringLen con_desc $ \\(src, len) ->"
-      , "            copyBytes (castPtr wr_ptr `plusPtr` fromIntegral sz) src len"
-      , "        let null_off = fromIntegral sz + fromIntegral (BS.length con_desc)"
-      , "        poke (castPtr wr_ptr `plusPtr` null_off) (0 :: Word8)"
-      , ""
-      , "    pure $ if tables_next_to_code"
-      , "      then castPtrToFunPtr $ ex_ptr `plusPtr` conInfoTableSizeB"
-      , "      else castPtrToFunPtr ex_ptr"
-      ]
-
-    newExecConItblAfter = [
-        "newExecConItbl :: Bool -> StgInfoTable -> ByteString -> IO (FunPtr ())"
-      , "newExecConItbl tables_next_to_code obj con_desc"
-      , "   = alloca $ \\pcode -> do"
-      , "        sz0 <- sizeOfEntryCode tables_next_to_code"
-      , "        let lcon_desc = BS.length con_desc + 1{- null terminator -}"
-      , "            -- SCARY"
-      , "            -- This size represents the number of bytes in an StgConInfoTable."
-      , "            sz = fromIntegral $ conInfoTableSizeB + sz0"
-      , "               -- Note: we need to allocate the conDesc string next to the info"
-      , "               -- table, because on a 64-bit platform we reference this string"
-      , "               -- with a 32-bit offset relative to the info table, so if we"
-      , "               -- allocated the string separately it might be out of range."
-      , "        wr_ptr <- _allocateExec (sz + fromIntegral lcon_desc) pcode"
-      , "        ex_ptr <- peek pcode"
-      , "        let cinfo = StgConInfoTable { conDesc = ex_ptr `plusPtr` fromIntegral sz"
-      , "                                    , infoTable = obj }"
-      , "        pokeConItbl tables_next_to_code wr_ptr ex_ptr cinfo"
-      , "        BS.useAsCStringLen con_desc $ \\(src, len) ->"
-      , "            copyBytes (castPtr wr_ptr `plusPtr` fromIntegral sz) src len"
-      , "        let null_off = fromIntegral sz + fromIntegral (BS.length con_desc)"
-      , "        poke (castPtr wr_ptr `plusPtr` null_off) (0 :: Word8)"
-      , "        _flushExec sz ex_ptr -- Cache flush (if needed)"
-      , "        pure $ if tables_next_to_code"
-      , "          then castPtrToFunPtr $ ex_ptr `plusPtr` conInfoTableSizeB"
-      , "          else castPtrToFunPtr ex_ptr"
-      ]
 
 applyPatchGHCiMessage :: GhcFlavor -> IO ()
 applyPatchGHCiMessage ghcFlavor =
@@ -654,128 +559,24 @@ applyPatchGHCiMessage ghcFlavor =
   where
       messageHs = "libraries/ghci/GHCi/Message.hs"
 
-applyPatchHaddockHs :: GhcFlavor -> IO ()
-applyPatchHaddockHs ghcFlavor = do
-  -- See https://github.com/ndmitchell/hlint/issues/1224
-  when (ghcFlavor `elem` [Ghc901, Ghc902]) (
-    writeFile haddockHs .
-      replace
-        "-- *"
-        "-- -"
-    =<< readFile' haddockHs
-    )
-  -- See https://github.com/digital-asset/ghc-lib/issues/344
-  when (ghcSeries ghcFlavor == Ghc92) (
-    writeFile ffiClosuresHs .
-      replace
-        "-- *"
-        "-- -"
-    =<< readFile' ffiClosuresHs
-    )
-
-  -- See https://github.com/digital-asset/ghc-lib/issues/391
-  when (ghcFlavor `elem` [Ghc923, Ghc924, Ghc925, Ghc926, Ghc927]) (
-    writeFile codeGenHs . replace "{- | debugIsOn -}"  ""
-    =<< readFile' codeGenHs
-    )
-
-  where
-    haddockHs = "compiler/GHC/Parser/PostProcess/Haddock.hs"
-    ffiClosuresHs = "libraries/ghc-heap/GHC/Exts/Heap/FFIClosures.hs"
-    codeGenHs = "compiler/GHC/CmmToAsm/AArch64/CodeGen.hs"
-
--- Support for unboxed tuples got landed 03/20/2021
--- (https://gitlab.haskell.org/ghc/ghc/-/commit/1f94e0f7601f8e22fdd81a47f130650265a44196#4ec156a7b95e9c7a690c99bc79e6e0edf60a51dc)
--- Older versions of the rts don't define two of the numeric
--- instruction codes that this support relies on.
-applyPatchRtsBytecodes :: GhcFlavor -> IO ()
-applyPatchRtsBytecodes ghcFlavor = do
-  when (ghcSeries ghcFlavor >= Ghc92) (
-    writeFile asmHs .
-      replace
-        "#include \"rts/Bytecodes.h\""
-        (unlines [
-              "#include \"rts/Bytecodes.h\""
-            , "#if __GLASGOW_HASKELL__ <= 901"
-            , "#  define bci_RETURN_T          69"
-            , "#  define bci_PUSH_ALTS_T       70"
-            , "#endif" ])
-    =<< readFile' asmHs )
-    where
-      asmHs = "compiler/GHC/ByteCode/Asm.hs"
-
--- Workaround lack of newer ghc-prim 12/3/2019
--- (https://gitlab.haskell.org/ghc/ghc/commit/705a16df02411ec2445c9a254396a93cabe559ef)
-applyPatchGhcPrim :: GhcFlavor -> IO ()
-applyPatchGhcPrim ghcFlavor = do
-    let tysPrim =
-          "compiler/" ++
-          if ghcSeries ghcFlavor >= Ghc90
-            then "GHC/Builtin/Types/Prim.hs"
-            else "prelude/TysPrim.hs"
-    when (ghcSeries ghcFlavor >= Ghc90) (
-      writeFile tysPrim .
-          replaceIfGhcPrim070Else 0
-            "bcoPrimTyCon = pcPrimTyCon0 bcoPrimTyConName LiftedRep"
-            "bcoPrimTyCon = pcPrimTyCon0 bcoPrimTyConName UnliftedRep" .
-          replaceIfGhcPrim070Else 0
-            "bcoPrimTyConName              = mkPrimTc (fsLit \"BCO\") bcoPrimTyConKey bcoPrimTyCon"
-            "bcoPrimTyConName              = mkPrimTc (fsLit \"BCO#\") bcoPrimTyConKey bcoPrimTyCon"
-        =<< readFile' tysPrim
-        )
-
-    let createBCO = "libraries/ghci/GHCi/CreateBCO.hs"
-    when (ghcSeries ghcFlavor >= Ghc90) (
-      writeFile createBCO .
-          replace
-              "{-# LANGUAGE RecordWildCards #-}"
-              "{-# LANGUAGE RecordWildCards #-}\n{-# LANGUAGE CPP #-}" .
-          replaceIfGhcPrim070Else 5
-              "do linked_bco <- linkBCO' arr bco"
-              "do BCO bco# <- linkBCO' arr bco" .
-          replaceIfGhcPrim070Else 11
-            "then return (HValue (unsafeCoerce linked_bco))\n           else case mkApUpd0# linked_bco of { (# final_bco #) ->"
-            "then return (HValue (unsafeCoerce# bco#))\n           else case mkApUpd0# bco# of { (# final_bco #) ->" .
-          replaceIfGhcPrim070Else 6
-            "bco <- linkBCO' arr bco\n      writePtrsArrayBCO i bco marr"
-            "BCO bco# <- linkBCO' arr bco\n      writePtrsArrayBCO i bco# marr" .
-          replaceIfGhcPrim070Else 0
-            "writePtrsArrayBCO :: Int -> BCO -> PtrsArr -> IO ()"
-            "writePtrsArrayBCO :: Int -> BCO# -> PtrsArr -> IO ()" .
-          replaceIfGhcPrim070Else  0
-            "writePtrsArrayMBA :: Int -> MutableByteArray# s -> PtrsArr -> IO ()"
-            "data BCO = BCO BCO#\nwritePtrsArrayMBA :: Int -> MutableByteArray# s -> PtrsArr -> IO ()" .
-          replaceIfGhcPrim070Else 2
-            "newBCO# instrs lits ptrs arity bitmap s"
-            "case newBCO# instrs lits ptrs arity bitmap s of\n    (# s1, bco #) -> (# s1, BCO bco #)"
-        =<< readFile' createBCO
-        )
-  where
-    replaceIfGhcPrim070Else :: Int -> String -> String -> String -> String
-    replaceIfGhcPrim070Else n s r = replace s (ifGhcPrim070Else n s r)
-
-    ifGhcPrim070Else :: Int -> String -> String -> String
-    ifGhcPrim070Else n s r =
-      let indent n s = replicate n ' ' ++ s  in
-      unlines ["\n#if MIN_VERSION_ghc_prim(0, 7, 0)", indent n s, "#else", indent n r , "#endif" ]
-
 -- | Fix up these rts include paths. We don't ship rts headers since
 -- we run ghc-lib using the RTS of the compiler we build with - we go
 -- to the compiler installation for those.
 applyPatchRtsIncludePaths :: GhcFlavor -> IO ()
 applyPatchRtsIncludePaths ghcFlavor = do
-  let files =
-        [ "compiler/GHC/Runtime/Heap/Layout.hs" | ghcSeries ghcFlavor >= Ghc90 ] ++
-        [ "compiler/cmm/SMRep.hs" | ghcSeries ghcFlavor < Ghc90 ] ++
-        [ "compiler/GHC/StgToCmm/Layout.hs"  | ghcSeries ghcFlavor >= Ghc810 ] ++
-        [ "compiler/codeGen/StgCmmLayout.hs" | ghcSeries ghcFlavor < Ghc810 ]
-  forM_ files $
-    \file ->
-        writeFile file .
-          replace
-              "../includes/rts"
-              "rts"
-        =<< readFile' file
+  when (ghcSeries ghcFlavor < Ghc92) $ do
+    let files =
+          [ "compiler/GHC/Runtime/Heap/Layout.hs" | ghcSeries ghcFlavor >= Ghc90 ] ++
+          [ "compiler/cmm/SMRep.hs" | ghcSeries ghcFlavor < Ghc90 ] ++
+          [ "compiler/GHC/StgToCmm/Layout.hs"  | ghcSeries ghcFlavor >= Ghc810 ] ++
+          [ "compiler/codeGen/StgCmmLayout.hs" | ghcSeries ghcFlavor < Ghc810 ]
+    forM_ files $
+      \file ->
+          writeFile file .
+            replace
+                "../includes/rts"
+                "rts"
+          =<< readFile' file
 
 -- | Mangle exported C symbols to avoid collisions between the symbols
 -- in ghc-lib-parser and ghc.
@@ -797,7 +598,7 @@ mangleCSymbols ghcFlavor = do
         prefixSymbol initGenSym
         =<< readFile' file
     let files
-          | ghcSeries ghcFlavor >= Ghc90 = ("compiler/GHC/Types" </>) <$> [ "Unique/Supply.hs", "Unique.hs" ]
+          | ghcSeries ghcFlavor >= Ghc90 = map ("compiler/GHC/Types" </>) [ "Unique/Supply.hs", "Unique.hs" ]
           | otherwise = [ "compiler/basicTypes/UniqSupply.hs" ]
     forM_ files $ \file ->
         writeFile file .
@@ -894,64 +695,33 @@ applyPatchCmmParseNoImplicitPrelude _ = do
         "import GhcPrelude\nimport qualified Prelude"
     =<< readFile' cmmParse
 
--- [Note : GHC now depends on exceptions package]
--- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
--- As of
--- https://gitlab.haskell.org/ghc/ghc/-/commit/30272412fa437ab8e7a8035db94a278e10513413
--- (4th May 2020), certain GHC modules depend on the exceptions
--- package. Depending on the boot compiler, this package may or may
--- not be present and if it's missing, determining the list of
--- ghc-lib-parser modules (via 'calcParserModules') will fail. The
--- function 'appyPatchHadrianStackYaml' guarantees it is available
--- if its needed.
-
--- | Patch Hadrian's Cabal.
+-- | Patch Hadrian's 'stack.yaml'.
 applyPatchHadrianStackYaml :: GhcFlavor -> Maybe String -> IO ()
-applyPatchHadrianStackYaml ghcFlavor resolver = do
+applyPatchHadrianStackYaml _ghcFlavor resolver = do
+  -- [Note: Hack "ghc-X.X.X does not compile with ghc XXX"]
+  -- ------------------------------------------------------
+  -- See for example
+  -- https://gitlab.haskell.org/ghc/ghc/-/issues/21633 &
+  -- https://gitlab.haskell.org/ghc/ghc/-/issues/21634.
+  --
+  -- The idea is to replace the resolver with whatever is prevailing
+  -- (or ghc-9.2.7 if that's not possible).
+
   let hadrianStackYaml = "hadrian/stack.yaml"
-  config <- Y.decodeFileThrow hadrianStackYaml
-  -- See [Note : GHC now depends on exceptions package]
-  let deps = ["exceptions-0.10.4" | ghcFlavor >= Ghc901 ] ++
-        case parse (\cfg -> cfg .:? "extra-deps" .!= []) config of
-          Success ls -> ls :: [Y.Value]
-          Error msg -> error msg
- -- Build hadrian (and any artifacts we generate via hadrian e.g.
- -- Parser.hs) as quickly as possible.
-  let opts = HMS.insert "$everything" "-O0 -j" $
-        case parse (\cfg -> cfg .:? "ghc-options" .!= HMS.empty) config of
-          Success os -> os :: HMS.HashMap T.Text Y.Value
-          Error msg -> error msg
-  let config' =
-        HMS.insert "extra-deps" (toJSON deps)
-          (HMS.insert "ghc-options" (toJSON opts)
-#if !MIN_VERSION_aeson(2, 0, 2)
-                                     config
-#else
-                                     (toHashMap config)
-#endif
-          )
-    -- [Note: Hack "ghc-X.X.X does not compile with ghc XXX"]
-    -- ------------------------------------------------------
-    -- See for example
-    -- https://gitlab.haskell.org/ghc/ghc/-/issues/21633 &
-    -- https://gitlab.haskell.org/ghc/ghc/-/issues/21634.
-    --
-    -- The idea is to replace the resolver with whatever is prevailing
-    -- (or ghc-9.2.5 if that's not possible).
-      resolverDefault = "lts-20.10" -- ghc-9.2.5
-      -- The resolver has to curate packages so resolvers of the form
-      -- ghc-x.y.z won't do.
-      resolver' = case fromMaybe resolverDefault resolver of
+  let resolverDefault = "lts-20.18" -- ghc-9.2.7
+  -- The resolver has to curate packages so resolvers of the form
+  -- ghc-x.y.z won't do.
+  let resolver' = case fromMaybe resolverDefault resolver of
         r | "ghc-" `isPrefixOf` r -> resolverDefault
         r -> r
-
-      config'' = if ghcSeries ghcFlavor < Ghc94
-                     then config'
-                     else
-                         HMS.insert "allow-newer" (toJSON True)
-                           (HMS.update (\_ -> Just (toJSON resolver')) "resolver" config')
-
-  Y.encodeFile hadrianStackYaml config''
+  contents <- readFile' hadrianStackYaml
+  writeFile hadrianStackYaml $ unlines $
+    "ghc-options:\n  $everything: -O0 -j"
+     : if ghcSeries ghcFlavor < Ghc94 then
+         lines contents
+       else
+          ("resolver: " ++ resolver' ++ "\n" ++ "allow-newer: true")
+            : [ line | line <- lines contents, not $ "resolver:" `isPrefixOf` line ]
 
 -- | Data type representing an approximately parsed Cabal file.
 data Cabal = Cabal
