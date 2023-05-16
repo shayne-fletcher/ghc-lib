@@ -357,8 +357,43 @@ applyPatchSystemSemaphore patches ghcFlavor = do
     system_ $ "git apply " ++ (patches </> "5c8731244bc13a3d813d2a4d53b3188b28dc835-ghc_cabal_in.patch")
     system_ $ "git apply " ++ (patches </> "5c8731244bc13a3d813d2a4d53b3188b28dc835-GHC_Driver_MakeSem_hs.patch")
     system_ $ "git apply " ++ (patches </> "18a7d03d46706d2217235d26a72e6f1e82c62192-GHC_Driver_Make_hs.patch")
-    system_ $ "git apply " ++ (patches </> "5c8731244bc13a3d813d2a4d53b3188b28dc835-GHC_Driver_Session_hs.patch")
+    system_ $ "git apply " ++ (patches </> "86aae5702d09db2f50c42a3f43ef72df1e3a710b-GHC_Driver_Session_hs.patch")
     system_ $ "git apply " ++ (patches </> "5c8731244bc13a3d813d2a4d53b3188b28dc835-GHC_Driver_Pipeline_LogQueue_hs.patch")
+    let files = [
+            "compiler/GHC/Core/Opt/CallerCC.hs"
+          , "compiler/GHC/Core/Opt/Monad.hs"
+          , "compiler/GHC/Core/Rules.hs"
+          , "compiler/GHC/Data/IOEnv.hs"
+          , "compiler/GHC/Driver/Config/Diagnostic.hs"
+          , "compiler/GHC/Driver/Config/Logger.hs"
+          , "compiler/GHC/Driver/Env.hs"
+          , "compiler/GHC/Driver/Env/Types.hs"
+          , "compiler/GHC/Driver/Errors/Ppr.hs"
+          , "compiler/GHC/Driver/Errors/Types.hs"
+          , "compiler/GHC/Driver/Hooks.hs"
+          , "compiler/GHC/Driver/Ppr.hs"
+          , "compiler/GHC/Hs/Pat.hs"
+          , "compiler/GHC/HsToCore/Errors/Types.hs"
+          , "compiler/GHC/Runtime/Context.hs"
+          , "compiler/GHC/Tc/Types/Constraint.hs"
+          , "compiler/GHC/Tc/Utils/TcType.hs"
+          , "compiler/GHC/Unit/Env.hs"
+          , "compiler/GHC/Unit/Module/Graph.hs"
+          , "compiler/GHC/Unit/Module/ModSummary.hs"
+          , "compiler/GHC/Unit/State.hs"
+          ]
+    forM_ files $ \file -> writeFile file . replace "import GHC.Driver.DynFlags" "import GHC.Driver.Session" =<< readFile' file
+    writeFile "compiler/GHC/Driver/Session.hs" .
+      replace
+        "isAvx512pfEnabled,"
+        "isAvx512pfEnabled, isFmaEnabled," .
+      replace
+        "isAvx512pfEnabled dflags = avx512pf dflags"
+        (unlines[
+           "isAvx512pfEnabled dflags = avx512pf dflags"
+         , "isFmaEnabled _ = False"
+         ])
+      =<< readFile' "compiler/GHC/Driver/Session.hs"
 
 applyPatchTemplateHaskellLanguageHaskellTHSyntax :: FilePath -> GhcFlavor -> IO ()
 applyPatchTemplateHaskellLanguageHaskellTHSyntax patches ghcFlavor = do
@@ -1127,7 +1162,7 @@ generateGhcLibCabal ghcFlavor customCppOpts = do
     let nonParserModules =
           Set.toList (Set.difference
           (Set.fromList (askField lib "exposed-modules:" ))
-          (Set.fromList parserModules))
+          (Set.fromList (parserModules ++ ["GHC.Driver.DynFlags" | ghcSeries ghcFlavor >= Ghc98] )))
 
     writeFile "ghc-lib.cabal" $ unlines $ map trimEnd $
         [ "cabal-version: 2.0"
