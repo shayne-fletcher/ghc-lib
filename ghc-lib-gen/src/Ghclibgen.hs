@@ -357,8 +357,9 @@ applyPatchSystemSemaphore patches ghcFlavor = do
     system_ $ "git apply " ++ (patches </> "5c8731244bc13a3d813d2a4d53b3188b28dc835-ghc_cabal_in.patch")
     system_ $ "git apply " ++ (patches </> "5c8731244bc13a3d813d2a4d53b3188b28dc835-GHC_Driver_MakeSem_hs.patch")
     system_ $ "git apply " ++ (patches </> "5c8731244bc13a3d813d2a4d53b3188b28dc835-GHC_Driver_Pipeline_LogQueue_hs.patch")
-    system_ $ "git apply " ++ (patches </> "4d29ecdfcc79ad663e066d9f7d6d17b64c8c6c41-GHC_Driver_Make_hs.patch")
+    system_ $ "git apply " ++ (patches </> "b112546afa694efc0ae20d9d6c00b572a75c0239-GHC_Driver_Make_hs.patch")
     writeFile "compiler/GHC/Driver/Make.hs" .
+      -- patch 1
       replace
         (unlines [
             "    n_jobs <- case parMakeCount (hsc_dflags hsc_env) of"
@@ -366,7 +367,21 @@ applyPatchSystemSemaphore patches ghcFlavor = do
             , "                    Just n  -> return n"
             ]
         )
-        "    n_jobs <- liftIO getNumProcessors"
+        "    n_jobs <- liftIO getNumProcessors" .
+      -- patch 2
+      replace
+        (unlines [
+            "load' :: GhcMonad m => Maybe ModIfaceCache -> LoadHowMuch -> Maybe Messager -> ModuleGraph -> m SuccessFlag"
+          , "load' mhmi_cache how_much mHscMessage mod_graph = do"
+           ])
+        (unlines [
+            "load' :: GhcMonad m => Maybe ModIfaceCache -> LoadHowMuch -> (GhcMessage -> a) -> Maybe Messager -> ModuleGraph -> m SuccessFlag"
+          , "load' mhmi_cache how_much  _diag_wrapper mHscMessage mod_graph = do"
+           ]) .
+      replace
+        "    success <- load' cache how_much (Just msg) mod_graph"
+        "    success <- load' cache how_much undefined (Just msg) mod_graph"
+      -- fini
       =<< readFile' "compiler/GHC/Driver/Make.hs"
 
 applyPatchTemplateHaskellLanguageHaskellTHSyntax :: FilePath -> GhcFlavor -> IO ()
@@ -1120,7 +1135,14 @@ libBinParserModules :: GhcFlavor -> IO ([Cabal], [Cabal], [String])
 libBinParserModules ghcFlavor = do
     lib <- mapM readCabalFile cabalFileLibraries
     bin <- readCabalFile cabalFileBinary
-    parserModules <- calcParserModules ghcFlavor
+    calculatedParserModules <- calcParserModules ghcFlavor
+    let parserModules = calculatedParserModules ++ [
+          m | m <- [
+                     "GHC.Driver.Session"
+                   , "GHC.Driver.CmdLine"
+                   , "GHC.SysTools.BaseDir"
+              ]
+            , ghcSeries ghcFlavor > Ghc96]
     return (lib, [bin], parserModules)
 
 -- | Produces a ghc-lib Cabal file.
