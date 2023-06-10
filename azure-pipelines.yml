@@ -147,6 +147,7 @@ steps:
     displayName: Install brew
   - bash: |
       curl -sSL https://get.haskellstack.org/ | sh -s - -f
+      stack exec -- pacman -Suy
     displayName: install Stack
   - bash: |
       set -euo pipefail
