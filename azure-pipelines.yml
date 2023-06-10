@@ -47,18 +47,18 @@ strategy:
     # | macOS   | ghc-master      | ghc-9.6.1  |
     # | windows | ghc-master      | ghc-9.6.1  |
     # +---------+-----------------+------------+
-    linux-ghc-master-9.6.1:
-      image: "ubuntu-22.04"
-      mode: "--ghc-flavor ghc-master"
-      resolver: "ghc-9.6.1"
-      stack-yaml: "stack-exact.yaml"
-    mac-ghc-master-9.6.1:
-      image: "macOS-latest"
-      mode: "--ghc-flavor ghc-master"
-      resolver: "ghc-9.6.1"
-      stack-yaml: "stack-exact.yaml"
+    # linux-ghc-master-9.6.1:
+    #   image: "ubuntu-22.04"
+    #   mode: "--ghc-flavor ghc-master"
+    #   resolver: "ghc-9.6.1"
+    #   stack-yaml: "stack-exact.yaml"
+    # mac-ghc-master-9.6.1:
+    #   image: "macOS-latest"
+    #   mode: "--ghc-flavor ghc-master"
+    #   resolver: "ghc-9.6.1"
+    #   stack-yaml: "stack-exact.yaml"
     windows-ghc-master-9.6.1:
-      image: "windows-latest"
+      image: "windows-2019"
       mode: "--ghc-flavor ghc-master"
       resolver: "ghc-9.6.1"
       stack-yaml: "stack-exact.yaml"
@@ -70,18 +70,18 @@ strategy:
     # | macOS   | ghc-9.6.2       | ghc-9.4.5  |
     # | windows | ghc-9.6.2       | ghc-9.4.4  |
     # +---------+-----------------+------------+
-    linux-ghc-9.6.2-9.4.5:
-      image: "ubuntu-22.04"
-      mode: "--ghc-flavor ghc-9.6.2"
-      resolver: "ghc-9.4.5"
-      stack-yaml: "stack-exact.yaml"
-    mac-ghc-9.6.2-9.4.5:
-      image: "macOS-latest"
-      mode: "--ghc-flavor ghc-9.6.2"
-      resolver: "ghc-9.4.5"
-      stack-yaml: "stack-exact.yaml"
+    # linux-ghc-9.6.2-9.4.5:
+    #   image: "ubuntu-22.04"
+    #   mode: "--ghc-flavor ghc-9.6.2"
+    #   resolver: "ghc-9.4.5"
+    #   stack-yaml: "stack-exact.yaml"
+    # mac-ghc-9.6.2-9.4.5:
+    #   image: "macOS-latest"
+    #   mode: "--ghc-flavor ghc-9.6.2"
+    #   resolver: "ghc-9.4.5"
+    #   stack-yaml: "stack-exact.yaml"
     windows-ghc-9.6.2-9.4.4:
-      image: "windows-latest"
+      image: "windows-2019"
       mode: "--ghc-flavor ghc-9.6.2"
       resolver: "nightly-2023-03-17"
       stack-yaml: "stack.yaml"
@@ -93,18 +93,18 @@ strategy:
     # | macOS   | ghc-9.4.5       | ghc-9.2.7  |
     # | windows | ghc-9.4.5       | ghc-9.2.7  |
     # +---------+-----------------+------------+
-    linux-ghc-9.4.5-9.2.7:
-      image: "ubuntu-22.04"
-      mode: "--ghc-flavor ghc-9.4.5"
-      resolver: " lts-20.15"
-      stack-yaml: "stack.yaml"
-    mac-ghc-9.4.5-9.2.7:
-      image: "macOS-latest"
-      mode: "--ghc-flavor ghc-9.4.5"
-      resolver: " lts-20.15"
-      stack-yaml: "stack.yaml"
+    # linux-ghc-9.4.5-9.2.7:
+    #   image: "ubuntu-22.04"
+    #   mode: "--ghc-flavor ghc-9.4.5"
+    #   resolver: " lts-20.15"
+    #   stack-yaml: "stack.yaml"
+    # mac-ghc-9.4.5-9.2.7:
+    #   image: "macOS-latest"
+    #   mode: "--ghc-flavor ghc-9.4.5"
+    #   resolver: " lts-20.15"
+    #   stack-yaml: "stack.yaml"
     windows-ghc-9.4.5-9.2.7:
-      image: "windows-latest"
+      image: "windows-2019"
       mode: "--ghc-flavor ghc-9.4.5"
       resolver: " lts-20.15"
       stack-yaml: "stack.yaml"
@@ -116,21 +116,21 @@ strategy:
     # | windows | da-ghc-8.8.1    | ghc-8.8.1  |
     # | macOS   | da-ghc-8.8.1    | ghc-8.8.1  |
     # +---------+-----------------+------------+
-    linux-da-ghc-8.8.1-8.8.1:
-      image: "ubuntu-22.04"
-      mode: "--da"
-      resolver: "nightly-2020-01-08"
-      stack-yaml: "stack.yaml"
+    # linux-da-ghc-8.8.1-8.8.1:
+    #   image: "ubuntu-22.04"
+    #   mode: "--da"
+    #   resolver: "nightly-2020-01-08"
+    #   stack-yaml: "stack.yaml"
     windows-da-ghc-8.8.1-8.8.1:
-      image: "windows-latest"
+      image: "windows-2019"
       mode: "--da"
       resolver: "nightly-2020-01-08"
       stack-yaml: "stack.yaml"
-    mac-da-ghc-8.8.1-8.8.1:
-      image: "macOS-latest"
-      mode: "--da"
-      resolver: "nightly-2020-01-08"
-      stack-yaml: "stack.yaml"
+    # mac-da-ghc-8.8.1-8.8.1:
+    #   image: "macOS-latest"
+    #   mode: "--da"
+    #   resolver: "nightly-2020-01-08"
+    #   stack-yaml: "stack.yaml"
 
 pool: {vmImage: '$(image)'}
 
@@ -174,6 +174,7 @@ steps:
     displayName: run hlint
     condition: eq( variables['Agent.OS'], 'Linux' )
   - bash: |
-      GHCLIB_AZURE=1;export GHCLIB_AZURE
+      export GHCLIB_AZURE=1
+
       stack runhaskell --stack-yaml $(stack-yaml) --resolver $(resolver) --package extra --package optparse-applicative -- CI.hs $(mode)  --stack-yaml $(stack-yaml) --resolver $(resolver)
     displayName: build

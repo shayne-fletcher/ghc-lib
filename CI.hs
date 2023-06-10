@@ -312,6 +312,7 @@ buildDists
         ghcDirs   = ["ghc" | not noGhcCheckout] ++ [ "ghc-lib", "ghc-lib-parser" ]
         toDelete  = ghcDirs ++ tarBalls ++ lockFiles
     forM_ toDelete removePath
+
     cmd $ "git checkout " ++ stackConfig
     cmd "git checkout ghc-lib-gen.cabal examples"
 
@@ -332,7 +333,11 @@ buildDists
       cmd "{ cd ghc; git remote remove upstream || true; }"
       cmd "cd ghc && git clean -xdf && git submodule foreach git clean -xdf && git submodule foreach git checkout . && git checkout ."
     else do
-      cmd "git clone https://gitlab.haskell.org/ghc/ghc.git"
+      cmd "git clone https://github.com/ghc/ghc.git"
+      cmd "git config --global url.\"git://github.com/ghc/packages-\".insteadOf     git://github.com/ghc/packages/"
+      cmd "git config --global url.\"http://github.com/ghc/packages-\".insteadOf    http://github.com/ghc/packages/"
+      cmd "git config --global url.\"https://github.com/ghc/packages-\".insteadOf   https://github.com/ghc/packages/"
+      cmd "git config --global url.\"git\\@github.com:/ghc/packages-\".insteadOf    git\\@github.com:/ghc/packages/"
       cmd "cd ghc && git fetch --tags"
     gitCheckout ghcFlavor
 
