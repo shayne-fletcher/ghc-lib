@@ -206,8 +206,10 @@ compilerDependencies ghcFlavor =
     , "primop-vector-tys.hs-incl"
     , "primop-vector-uniques.hs-incl"
     ] ++
+    [ "primop-has-side-effects.hs-incl" | ghcSeries ghcFlavor >= Ghc910] ++
     [ "primop-docs.hs-incl" | ghcSeries ghcFlavor >= Ghc90 ] ++
     [ "GHC/Platform/Constants.hs" | ghcSeries ghcFlavor >= Ghc92 ]
+
 
 platformH :: GhcFlavor -> [FilePath]
 platformH ghcFlavor =
