@@ -13,7 +13,8 @@ ghc-options:
   # Try to be quick.
   "$everything": -O0 -j
 
-allow-newer: true # aeson's bounds on th-abstraction
+# when you need it you need it
+#   allow-newer: true # e.g aeson's bounds on th-abstraction
 
 extra-deps:
 # Dependencies of ghc-lib-parser & ghc-lib:
@@ -67,7 +68,7 @@ extra-deps:
 - network-uri-2.6.4.2
 - th-compat-0.1.4
 - text-iso8601-0.1
-- text-2.0.1
+- text-2.1
 - parsec-3.1.17.0
 - attoparsec-0.14.4
 - conduit-1.3.5
