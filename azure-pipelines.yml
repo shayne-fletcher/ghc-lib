@@ -178,5 +178,6 @@ steps:
     condition: eq( variables['Agent.OS'], 'Linux' )
   - bash: |
       GHCLIB_AZURE=1;export GHCLIB_AZURE
+      echo "CXX is $CXX"
       stack runhaskell --stack-yaml $(stack-yaml) --resolver $(resolver) --package extra --package optparse-applicative -- CI.hs $(mode)  --stack-yaml $(stack-yaml) --resolver $(resolver)
     displayName: build
