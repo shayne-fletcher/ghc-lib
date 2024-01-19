@@ -56,7 +56,7 @@ ghclibgen (GhclibgenOpts root _patches target ghcFlavor skipInit cppOpts resolve
         -- These lines must come before 'generatePrerequisites':
         applyPatchAclocal ghcFlavor -- Do before ./boot && ./configure
         applyPatchFptoolsAlex ghcFlavor
-        applyPatchFpFindCxxStdLib ghcFlavor
+        -- applyPatchFpFindCxxStdLib ghcFlavor
         -- This invokes 'stack' strictly configured by
         -- 'hadrian/stack.yaml' (which may be influenced by
         -- `applyPatchHadrianStackYaml`).

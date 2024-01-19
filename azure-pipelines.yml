@@ -47,21 +47,26 @@ strategy:
     # | macOS   | ghc-master      | ghc-9.6.4  |
     # | windows | ghc-master      | ghc-9.6.4  |
     # +---------+-----------------+------------+
-    linux-ghc-master-9.6.4:
-      image: "ubuntu-22.04"
-      mode: "--ghc-flavor ghc-master"
-      resolver: "ghc-9.6.4"
-      stack-yaml: "stack-exact.yaml"
+    # linux-ghc-master-9.6.4:
+    #   image: "ubuntu-22.04"
+    #   mode: "--ghc-flavor ghc-master"
+    #   resolver: "ghc-9.6.4"
+    #   stack-yaml: "stack-exact.yaml"
     mac-ghc-master-9.6.4:
       image: "macOS-latest"
       mode: "--ghc-flavor ghc-master"
       resolver: "ghc-9.6.4"
       stack-yaml: "stack-exact.yaml"
-    windows-ghc-master-9.6.4:
-      image: "windows-latest"
-      mode: "--ghc-flavor ghc-master"
+    mac-rodrigo-9.6.4:
+      image: "macOS-latest"
+      mode: "--ghc-flavor 2b76e4fce1522a0aaa70a9f3db593494e96cc957"
       resolver: "ghc-9.6.4"
       stack-yaml: "stack-exact.yaml"
+    # windows-ghc-master-9.6.4:
+    #   image: "windows-latest"
+    #   mode: "--ghc-flavor ghc-master"
+    #   resolver: "ghc-9.6.4"
+    #   stack-yaml: "stack-exact.yaml"
 
     # +---------+-----------------+------------+
     # | OS      | ghc-lib flavor  | GHC        |
@@ -70,67 +75,67 @@ strategy:
     # | macOS   | ghc-master      | ghc-9.8.1  |
     # | windows | ghc-master      | ghc-9.8.1  |
     # +---------+-----------------+------------+
-    linux-ghc-master-9.8.1:
-      image: "ubuntu-22.04"
-      mode: "--ghc-flavor ghc-master"
-      resolver: "ghc-9.8.1"
-      stack-yaml: "stack-exact.yaml"
-    mac-ghc-master-9.8.1:
-      image: "macOS-latest"
-      mode: "--ghc-flavor ghc-master"
-      resolver: "ghc-9.8.1"
-      stack-yaml: "stack-exact.yaml"
-    windows-ghc-master-9.8.1:
-      image: "windows-latest"
-      mode: "--ghc-flavor ghc-master"
-      resolver: "ghc-9.8.1"
-      stack-yaml: "stack-exact.yaml"
+    # linux-ghc-master-9.8.1:
+    #   image: "ubuntu-22.04"
+    #   mode: "--ghc-flavor ghc-master"
+    #   resolver: "ghc-9.8.1"
+    #   stack-yaml: "stack-exact.yaml"
+    # mac-ghc-master-9.8.1:
+    #   image: "macOS-latest"
+    #   mode: "--ghc-flavor ghc-master"
+    #   resolver: "ghc-9.8.1"
+    #   stack-yaml: "stack-exact.yaml"
+    # windows-ghc-master-9.8.1:
+    #   image: "windows-latest"
+    #   mode: "--ghc-flavor ghc-master"
+    #   resolver: "ghc-9.8.1"
+    #   stack-yaml: "stack-exact.yaml"
 
-    # +---------+-----------------+------------+
-    # | OS      | ghc-lib flavor  | GHC        |
-    # +=========+=================+============+
-    # | linux   | ghc-9.8.1       | ghc-9.6.4  |
-    # | macOS   | ghc-9.8.1       | ghc-9.6.4  |
-    # | windows | ghc-9.8.1       | ghc-9.6.4  |
-    # +---------+-----------------+------------+
-    linux-ghc-9.8.1-9.6.4:
-      image: "ubuntu-22.04"
-      mode: "--ghc-flavor ghc-9.8.1"
-      resolver: "ghc-9.6.4"
-      stack-yaml: "stack-exact.yaml"
-    mac-ghc-9.8.1-9.6.4:
-      image: "macOS-latest"
-      mode: "--ghc-flavor ghc-9.8.1"
-      resolver: "ghc-9.6.4"
-      stack-yaml: "stack-exact.yaml"
-    windows-ghc-9.8.1-9.6.4:
-      image: "windows-latest"
-      mode: "--ghc-flavor ghc-9.8.1"
-      resolver: "ghc-9.6.4"
-      stack-yaml: "stack-exact.yaml"
+    # # +---------+-----------------+------------+
+    # # | OS      | ghc-lib flavor  | GHC        |
+    # # +=========+=================+============+
+    # # | linux   | ghc-9.8.1       | ghc-9.6.4  |
+    # # | macOS   | ghc-9.8.1       | ghc-9.6.4  |
+    # # | windows | ghc-9.8.1       | ghc-9.6.4  |
+    # # +---------+-----------------+------------+
+    # linux-ghc-9.8.1-9.6.4:
+    #   image: "ubuntu-22.04"
+    #   mode: "--ghc-flavor ghc-9.8.1"
+    #   resolver: "ghc-9.6.4"
+    #   stack-yaml: "stack-exact.yaml"
+    # mac-ghc-9.8.1-9.6.4:
+    #   image: "macOS-latest"
+    #   mode: "--ghc-flavor ghc-9.8.1"
+    #   resolver: "ghc-9.6.4"
+    #   stack-yaml: "stack-exact.yaml"
+    # windows-ghc-9.8.1-9.6.4:
+    #   image: "windows-latest"
+    #   mode: "--ghc-flavor ghc-9.8.1"
+    #   resolver: "ghc-9.6.4"
+    #   stack-yaml: "stack-exact.yaml"
 
-    # +---------+-----------------+------------+
-    # | OS      | ghc-lib flavor  | GHC        |
-    # +=========+=================+============+
-    # | linux   | da-ghc-8.8.1    | ghc-8.8.1  |
-    # | windows | da-ghc-8.8.1    | ghc-8.8.1  |
-    # | macOS   | da-ghc-8.8.1    | ghc-8.8.1  |
-    # +---------+-----------------+------------+
-    linux-da-ghc-8.8.1-8.8.1:
-      image: "ubuntu-22.04"
-      mode: "--da"
-      resolver: "nightly-2020-01-08"
-      stack-yaml: "stack.yaml"
-    windows-da-ghc-8.8.1-8.8.1:
-      image: "windows-latest"
-      mode: "--da"
-      resolver: "nightly-2020-01-08"
-      stack-yaml: "stack.yaml"
-    mac-da-ghc-8.8.1-8.8.1:
-      image: "macOS-latest"
-      mode: "--da"
-      resolver: "nightly-2020-01-08"
-      stack-yaml: "stack.yaml"
+    # # +---------+-----------------+------------+
+    # # | OS      | ghc-lib flavor  | GHC        |
+    # # +=========+=================+============+
+    # # | linux   | da-ghc-8.8.1    | ghc-8.8.1  |
+    # # | windows | da-ghc-8.8.1    | ghc-8.8.1  |
+    # # | macOS   | da-ghc-8.8.1    | ghc-8.8.1  |
+    # # +---------+-----------------+------------+
+    # linux-da-ghc-8.8.1-8.8.1:
+    #   image: "ubuntu-22.04"
+    #   mode: "--da"
+    #   resolver: "nightly-2020-01-08"
+    #   stack-yaml: "stack.yaml"
+    # windows-da-ghc-8.8.1-8.8.1:
+    #   image: "windows-latest"
+    #   mode: "--da"
+    #   resolver: "nightly-2020-01-08"
+    #   stack-yaml: "stack.yaml"
+    # mac-da-ghc-8.8.1-8.8.1:
+    #   image: "macOS-latest"
+    #   mode: "--da"
+    #   resolver: "nightly-2020-01-08"
+    #   stack-yaml: "stack.yaml"
 
 pool: {vmImage: '$(image)'}
 
