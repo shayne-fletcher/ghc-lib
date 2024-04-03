@@ -443,10 +443,10 @@ buildDists
     verifyConstraint "ghc-lib-parser == " version "examples/ghc-lib-test-mini-compile/ghc-lib-test-mini-compile.cabal"
     verifyConstraint "ghc-lib == " version "examples/ghc-lib-test-mini-compile/ghc-lib-test-mini-compile.cabal"
 
-    stack "sdist . --ignore-check --tar-dir=."
-    stack "sdist examples/ghc-lib-test-utils --tar-dir=."
-    stack "sdist examples/ghc-lib-test-mini-hlint --tar-dir=."
-    stack "sdist examples/ghc-lib-test-mini-compile --tar-dir=."
+    cmd "cabal sdist -o ."
+    cmd "(cd examples/ghc-lib-test-utils && cabal sdist -o ..)"
+    cmd "(cd examples/ghc-lib-test-mini-hlint && cabal sdist -o ..)"
+    cmd "(cd examples/ghc-lib-test-mini-compile && cabal sdist -o ..)"
 
     when noBuilds exitSuccess
 
