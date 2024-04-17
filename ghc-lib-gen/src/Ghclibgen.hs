@@ -20,6 +20,7 @@ module Ghclibgen (
   , applyPatchGhcPrim
   , applyPatchHaddockHs
   , applyPatchRtsBytecodes
+  , applyPatchSystemFilePath
   , applyPatchGHCiInfoTable
   , applyPatchGHCiMessage
   , applyPatchDerivedConstants
@@ -138,7 +139,7 @@ ghcLibHsSrcDirs forDepends ghcFlavor lib =
               GHC_9_6 -> [ "libraries/template-haskell", "libraries/ghc-boot-th", "libraries/ghc-boot", "libraries/ghc-heap", "libraries/ghci" ]
               GHC_9_8 -> [ "libraries/template-haskell", "libraries/ghc-boot-th", "libraries/ghc-boot", "libraries/ghc-heap", "libraries/ghc-platform/src", "libraries/ghc-platform" ]
               GHC_9_10 -> [ "libraries/template-haskell", "libraries/ghc-boot-th", "libraries/ghc-boot", "libraries/ghc-heap", "libraries/ghc-platform/src", "libraries/ghc-platform", "libraries/ghci" ]
-              GHC_9_12 -> [ "libraries/template-haskell", "libraries/ghc-boot-th", "libraries/ghc-boot", "libraries/ghc-heap", "libraries/ghc-platform/src", "libraries/ghc-platform", "libraries/ghci" ]
+              GHC_9_12 -> [ "libraries/template-haskell", "libraries/template-haskell/vendored-filepath", "libraries/ghc-boot-th", "libraries/ghc-boot", "libraries/ghc-heap", "libraries/ghc-platform/src", "libraries/ghc-platform", "libraries/ghci" ]
   in sortDiffListByLength all $ Set.fromList [ dir | not forDepends, dir <- exclusions ]
 
 -- File path constants.
@@ -806,6 +807,16 @@ applyPatchRtsBytecodes ghcFlavor = do
     where
       asmHs = "compiler/GHC/ByteCode/Asm.hs"
 
+applyPatchSystemFilePath :: GhcFlavor -> IO ()
+applyPatchSystemFilePath ghcFlavor = do
+  when (series > GHC_9_10) $ do
+    writeFile filePathHs . replace "{-# LANGUAGE Safe #-}" "" =<< readFile' filePathHs
+    writeFile posixHs . replace "import Data.Char(toLower, toUpper, isAsciiLower, isAsciiUpper)" (unlines ["import Prelude", "import Data.Char(toLower, toUpper, isAsciiLower, isAsciiUpper)"]) =<< readFile' posixHs
+  where
+    series = ghcSeries ghcFlavor
+    filePathHs = "libraries/template-haskell/vendored-filepath/System/FilePath.hs"
+    posixHs = "libraries/template-haskell/vendored-filepath/System/FilePath/Posix.hs"
+
 -- Workaround lack of newer ghc-prim 12/3/2019
 -- (https://gitlab.haskell.org/ghc/ghc/commit/705a16df02411ec2445c9a254396a93cabe559ef)
 applyPatchGhcPrim :: GhcFlavor -> IO ()
@@ -1196,6 +1207,12 @@ commonBuildDepends ghcFlavor =
     -- base
     base = [ baseBounds ghcFlavor ]
     specific
+       | ghcSeries ghcFlavor > GHC_9_10  = [
+           "ghc-prim > 0.2 && < 0.12"
+         , "containers >= 0.6.2.1 && < 0.8"
+         , "bytestring >= 0.11.4 && < 0.13"
+         , "time >= 1.4 && < 1.13"
+         ]
        | ghcSeries ghcFlavor >= GHC_9_10  = [
            "ghc-prim > 0.2 && < 0.12"
          , "containers >= 0.6.2.1 && < 0.8"
