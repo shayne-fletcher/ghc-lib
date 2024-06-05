@@ -339,23 +339,15 @@ buildDists
     -- Clean up old state.
     isCi <- isJust <$> lookupEnv "GHCLIB_AZURE"
     -- Avoid https://github.com/commercialhaskell/stack/issues/5866.
-    unless isCi $ stack "clean --full" -- Recursively delete '.stack-work'
     filesInDot <- getDirectoryContents "."
     let lockFiles = filter (isExtensionOf ".lock") filesInDot
         tarBalls  = filter (isExtensionOf ".tar.gz") filesInDot
         ghcDirs   = ["ghc" | not noGhcCheckout] ++ [ "ghc-lib", "ghc-lib-parser" ]
         toDelete  = ghcDirs ++ tarBalls ++ lockFiles
     forM_ toDelete removePath
+    cmd "rm -f cabal.project"
     cmd $ "git checkout " ++ stackConfig
     cmd "git checkout ghc-lib-gen.cabal examples"
-
-    -- Get packages missing on Windows needed by hadrian.
-    when isWindows $
-        stack "exec -- pacman -S autoconf automake-wrapper make patch python tar mintty --noconfirm"
-    -- Building of hadrian dependencies that result from the
-    -- invocations of ghc-lib-gen can require some versions of these
-    -- have been installed.
-    stack "build alex happy"
 
     -- If '--no-checkout' is given, it's on the caller to get the GHC
     -- clone with e.g.
@@ -377,22 +369,10 @@ buildDists
       cmd "cd ghc && git fetch --tags"
     gitCheckout ghcFlavor
 
-    -- Doing this avoids "Prelude.chr:bad argument" errors
-    -- (https://gitlab.haskell.org/ghc/ghc/-/issues/19452) testing
-    -- locally when later steps try to certain install older versions
-    -- of GHC which enables local testing with `stack runhaskell --stack-yaml stack.yaml --resolver nightly-2020-01-08 --package extra --package optparse-applicative CI.hs -- --da --stack-yaml stack.yaml --resolver nightly-2020-01-08`.
-    stack "exec -- bash -c \"rm -f $HOME/.stack/setup-exe-src/*\""
-
-    -- Feedback on the compiler used for ghc-lib-gen.
-    stack "exec -- ghc --version"
-
-    -- Build ghc-lib-gen. Do this here rather than in the Azure script
-    -- so that it's not forgotten when testing this program locally.
-    stack "build --no-terminal --ghc-options \"-Wall -Wno-name-shadowing -Werror\""
-
-    -- Any invocations of GHC in the sdist steps that follow use the
-    -- hadrian/stack.yaml resolver (which can and we should expect
-    -- to be, different to our resolver).
+    cmd "unset GHC_PACKAGE_PATH && cabal update"
+    cmd "unset GHC_PACKAGE_PATH && cabal install alex"
+    cmd "unset GHC_PACKAGE_PATH && cabal install happy"
+    cmd "unset GHC_PACKAGE_PATH && cabal build exe:ghc-lib-gen"
 
     -- Calculate version and package names.
     version <- tag
@@ -404,23 +384,21 @@ buildDists
     -- Make and extract an sdist of ghc-lib. The first argument is a
     -- ghc repo dir relative to '.' ('root'), 'patches' needs to be
     -- provided relative to 'root' (i.e. 'ghc') hence '../patches'.
-    stack $ "exec -- ghc-lib-gen ghc ../patches --ghc-lib-parser " ++ ghcFlavorOpt ghcFlavor ++ " " ++ cppOpts ghcFlavor ++ " " ++ stackResolverOpt resolver
+    cmd $ "unset GHC_PACKAGE_PATH && cabal run exe:ghc-lib-gen -- ghc ../patches --ghc-lib-parser " ++ ghcFlavorOpt ghcFlavor ++ " " ++ cppOpts ghcFlavor ++ " " ++ stackResolverOpt resolver
     patchVersion version "ghc/ghc-lib-parser.cabal"
     mkTarball pkg_ghclib_parser
     renameDirectory pkg_ghclib_parser "ghc-lib-parser"
     removeFile "ghc/ghc-lib-parser.cabal"
-    cmd "git checkout stack.yaml"
 
     -- Make and extract an sdist of ghc-lib. The first argument is a
     -- ghc repo dir relative to '.' ('root'), 'patches' needs to be
     -- provided relative to 'root' (i.e. 'ghc') hence '../patches'.
-    stack $ "exec -- ghc-lib-gen ghc ../patches --ghc-lib " ++ ghcFlavorOpt ghcFlavor ++ " " ++ cppOpts ghcFlavor ++ " " ++ stackResolverOpt resolver ++ " " ++ "--skip-init"
+    cmd $ "unset GHC_PACKAGE_PATH && cabal run exe:ghc-lib-gen -- ghc ../patches --ghc-lib " ++ ghcFlavorOpt ghcFlavor ++ " " ++ cppOpts ghcFlavor ++ " " ++ stackResolverOpt resolver ++ " " ++ "--skip-init"
     patchVersion version "ghc/ghc-lib.cabal"
     patchConstraints version "ghc/ghc-lib.cabal"
     mkTarball pkg_ghclib
     renameDirectory pkg_ghclib "ghc-lib"
     removeFile "ghc/ghc-lib.cabal"
-    cmd "git checkout stack.yaml"
 
     copyDirectoryRecursive
       "ghc-lib-gen/ghc-lib-parser"
@@ -452,6 +430,18 @@ buildDists
     cmd "(cd examples/ghc-lib-test-mini-compile && cabal sdist -o ../..)"
 
     when noBuilds exitSuccess
+
+    writeFile "cabal.project" $
+      unlines [ "packages: "
+              , "  ghc-lib-parser/ghc-lib-parser.cabal"
+              , "  ghc-lib/ghc-lib.cabal"
+              , "  examples/ghc-lib-test-utils/ghc-lib-test-utils.cabal"
+              , "  examples/ghc-lib-test-mini-hlint/ghc-lib-test-mini-hlint.cabal"
+              , "  examples/ghc-lib-test-mini-compile/ghc-lib-test-mini-compile.cabal"
+              ]
+    cmd "unset GHC_PACKAGE_PATH && cabal build -j all"
+
+    exitSuccess
 
     -- Append the libraries and examples to the prevailing stack
     -- configuration file.
@@ -582,7 +572,7 @@ buildDists
       mkTarball :: String -> IO ()
       mkTarball target = do
         writeFile "stack.yaml" . (++ "- ghc\n") =<< readFile' "stack.yaml"
-        stack "sdist ghc --tar-dir=."
+        cmd "(cd ghc && cabal sdist -o ..)"
         cmd $ "tar -xvf " ++ target ++ ".tar.gz"
 
       tag :: IO String
