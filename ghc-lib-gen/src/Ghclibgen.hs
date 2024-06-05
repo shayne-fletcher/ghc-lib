@@ -2,6 +2,8 @@
 -- its affiliates. All rights reserved.  SPDX-License-Identifier:
 -- (Apache-2.0 OR BSD-3-Clause)
 
+{-# OPTIONS_GHC -Wno-unused-imports -Wno-unused-matches #-}
+
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
