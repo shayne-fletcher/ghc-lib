@@ -49,4 +49,4 @@ jobs:
         run: echo "GHCLIB_AZURE='1'" >> $GITHUB_ENV
       - name: Run CI.hs
         shell: bash
-        run: stack runhaskell --stack-yaml stack-exact.yaml --resolver ghc-9.6.5 --package extra --package optparse-applicative CI.hs -- --stack-yaml stack-exact.yaml --resolver ghc-9.6.5 --ghc-flavor "ghc-master"
+        run: stack runhaskell --package extra --package optparse-applicative CI.hs -- --ghc-flavor "ghc-master"
