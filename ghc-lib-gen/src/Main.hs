@@ -23,7 +23,7 @@ main = ghclibgen =<< execParser opts
       )
 
 ghclibgen :: GhclibgenOpts -> IO ()
-ghclibgen (GhclibgenOpts root _patches target ghcFlavor skipInit cppOpts resolver) = do
+ghclibgen (GhclibgenOpts root _patches target ghcFlavor skipInit cppOpts _resolver) = do
   withCurrentDirectory root $
     case target of
       GhclibParser -> do
@@ -47,8 +47,9 @@ ghclibgen (GhclibgenOpts root _patches target ghcFlavor skipInit cppOpts resolve
 
     init :: GhcFlavor -> IO ()
     init ghcFlavor = do
+        applyPatchHadrianCabalProject ghcFlavor
         applyPatchTemplateHaskellCabal ghcFlavor
-        applyPatchHadrianStackYaml ghcFlavor resolver
+        -- applyPatchHadrianStackYaml ghcFlavor resolver
         applyPatchHeapClosures ghcFlavor
         applyPatchRtsIncludePaths ghcFlavor
         applyPatchGhcPrim ghcFlavor

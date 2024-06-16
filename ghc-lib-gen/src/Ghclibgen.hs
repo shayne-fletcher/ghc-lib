@@ -15,6 +15,7 @@
 
 module Ghclibgen (
     applyPatchHeapClosures
+  , applyPatchHadrianCabalProject
   , applyPatchAclocal
   , applyPatchHsVersions
   , applyPatchGhcPrim
@@ -28,7 +29,7 @@ module Ghclibgen (
   , applyPatchStage
   , applyPatchNoMonoLocalBinds
   , applyPatchCmmParseNoImplicitPrelude
-  , applyPatchHadrianStackYaml
+  -- , applyPatchHadrianStackYaml
   , applyPatchGhcInternalEventWindowsHsc
   , applyPatchTemplateHaskellLanguageHaskellTHSyntax
   , applyPatchTemplateHaskellCabal
@@ -41,7 +42,7 @@ module Ghclibgen (
 ) where
 
 import Control.Exception (handle)
-import Control.Monad
+import Control.Monad.Extra
 import System.Process.Extra
 import System.FilePath hiding ((</>), normalise, dropTrailingPathSeparator)
 import System.FilePath.Posix ((</>), normalise, dropTrailingPathSeparator) -- Make sure we generate / on all platforms.
@@ -58,13 +59,13 @@ import qualified Data.List.NonEmpty
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import Data.Aeson.Types (parse, Result(..))
-#if MIN_VERSION_aeson(2, 0, 2)
-import Data.Aeson.KeyMap (toHashMap)
-#endif
-import qualified Data.Yaml as Y
-import Data.Yaml (ToJSON(..), (.:?), (.!=))
-import qualified Data.HashMap.Strict as HMS
+-- import Data.Aeson.Types (parse, Result(..))
+-- #if MIN_VERSION_aeson(2, 0, 2)
+-- import Data.Aeson.KeyMap (toHashMap)
+-- #endif
+-- import qualified Data.Yaml as Y
+-- import Data.Yaml (ToJSON(..), (.:?), (.!=))
+-- import qualified Data.HashMap.Strict as HMS
 
 import GhclibgenFlavor
 
@@ -408,6 +409,16 @@ calcLibModules ghcFlavor = do
       modules = [ replace "/" "." . dropSuffix ".hs" $ m | m <- strippedModulePaths, m /= "Main.hs" ]
 
   return $ nubSort modules
+
+applyPatchHadrianCabalProject :: GhcFlavor -> IO ()
+applyPatchHadrianCabalProject _ = do
+    whenM (doesPathExist "hadrian/cabal.project.freeze") $
+      removePathForcibly "hadrian/cabal.project.freeze"
+    cabalProjectContents <- lines' <$> readFile' "hadrian/cabal.project"
+    writeFile "hadrian/cabal.project" $
+      unlines ( cabalProjectContents ++  [ "flags: -selftest" ])
+    where
+      lines' s = [ l | l <- lines s, not $ "index-state" `isPrefixOf` l ]
 
 applyPatchGhcInternalEventWindowsHsc :: GhcFlavor -> IO ()
 applyPatchGhcInternalEventWindowsHsc ghcFlavor = do
@@ -1037,70 +1048,70 @@ applyPatchCmmParseNoImplicitPrelude _ = do
         "import GhcPrelude\nimport qualified Prelude"
     =<< readFile' cmmParse
 
--- Patch Hadrian's 'stack.yaml'.
-applyPatchHadrianStackYaml :: GhcFlavor -> Maybe String -> IO ()
-applyPatchHadrianStackYaml ghcFlavor resolver = do
-  let hadrianStackYaml = "hadrian/stack.yaml"
-  config <- Y.decodeFileThrow hadrianStackYaml
-  let deps = ["exceptions-0.10.4" | ghcSeries ghcFlavor == GHC_9_0] ++
-        [ file | ghcSeries ghcFlavor == GHC_9_8
-         , file <- [
-                "Cabal-3.8.1.0"
-              , "Cabal-syntax-3.8.1.0"
-              ]] ++
-        [ file | ghcSeries ghcFlavor >= GHC_9_8
-          , file <- [
-                "unix-2.8.5.0"
-              , "directory-1.3.8.2"
-              , "process-1.6.18.0"
-              , "filepath-1.4.100.4"
-              , "Win32-2.13.4.0"
-              , "time-1.12.2"
-              , "semaphore-compat-1.0.0"
-        ] ] ++
-        case parse (\cfg -> cfg .:? "extra-deps" .!= []) config of
-          Success ls -> ls :: [Y.Value]
-          Error msg -> error msg
-  -- Build hadrian (and any artifacts we generate via hadrian e.g.
-  -- Parser.hs) as quickly as possible.
-  let opts = HMS.insert "$everything" "-O0 -j" $
-        case parse (\cfg -> cfg .:? "ghc-options" .!= HMS.empty) config of
-          Success os -> os :: HMS.HashMap T.Text Y.Value
-          Error msg -> error msg
-  let config' =
-        HMS.insert "extra-deps" (toJSON deps)
-          (HMS.insert "ghc-options" (toJSON opts)
-#if !MIN_VERSION_aeson(2, 0, 2)
-                                     config
-#else
-                                     (toHashMap config)
-#endif
-          )
-    -- [Note: Hack "ghc-X.X.X does not compile with ghc XXX"]
-    -- ------------------------------------------------------
-    -- See for example
-    -- https://gitlab.haskell.org/ghc/ghc/-/issues/21633 &
-    -- https://gitlab.haskell.org/ghc/ghc/-/issues/21634.
-    --
-    -- The idea is to replace the resolver with whatever is prevailing
-    -- (or ghc-9.6.4 if that's not possible).
-    -- 9.6 since 2024/02/26 d9d69e127a735cfc3dbe8b1f7dc96a06fe654c3e
-      resolverDefault = "lts-22.12" -- ghc-9.6.4
-      -- The resolver has to curate packages so resolvers of the form
-      -- ghc-x.y.z won't do.
-      resolver' = case fromMaybe resolverDefault resolver of
-        r | "ghc-" `isPrefixOf` r -> resolverDefault
-        r -> r
-      -- This is still an issue with 9.6.1 (resolver in
-      -- hadrian/stack.yaml is a 9.0.2 resolver i.e. not recent enough
-      -- to build GHC so causes a configure error).
-      config'' = if ghcSeries ghcFlavor < GHC_9_4
-                     then config'
-                     else
-                           -- Ignore 'hadrian.cabal' constraints.
-                           HMS.insert "allow-newer" (toJSON True) $
-                           HMS.update (\_ -> Just (toJSON resolver')) "resolver" config'
-  Y.encodeFile hadrianStackYaml config''
+-- -- Patch Hadrian's 'stack.yaml'.
+-- applyPatchHadrianStackYaml :: GhcFlavor -> Maybe String -> IO ()
+-- applyPatchHadrianStackYaml ghcFlavor resolver = do
+--   let hadrianStackYaml = "hadrian/stack.yaml"
+--   config <- Y.decodeFileThrow hadrianStackYaml
+--   let deps = ["exceptions-0.10.4" | ghcSeries ghcFlavor == GHC_9_0] ++
+--         [ file | ghcSeries ghcFlavor == GHC_9_8
+--          , file <- [
+--                 "Cabal-3.8.1.0"
+--               , "Cabal-syntax-3.8.1.0"
+--               ]] ++
+--         [ file | ghcSeries ghcFlavor >= GHC_9_8
+--           , file <- [
+--                 "unix-2.8.5.0"
+--               , "directory-1.3.8.2"
+--               , "process-1.6.18.0"
+--               , "filepath-1.4.100.4"
+--               , "Win32-2.13.4.0"
+--               , "time-1.12.2"
+--               , "semaphore-compat-1.0.0"
+--         ] ] ++
+--         case parse (\cfg -> cfg .:? "extra-deps" .!= []) config of
+--           Success ls -> ls :: [Y.Value]
+--           Error msg -> error msg
+--   -- Build hadrian (and any artifacts we generate via hadrian e.g.
+--   -- Parser.hs) as quickly as possible.
+--   let opts = HMS.insert "$everything" "-O0 -j" $
+--         case parse (\cfg -> cfg .:? "ghc-options" .!= HMS.empty) config of
+--           Success os -> os :: HMS.HashMap T.Text Y.Value
+--           Error msg -> error msg
+--   let config' =
+--         HMS.insert "extra-deps" (toJSON deps)
+--           (HMS.insert "ghc-options" (toJSON opts)
+-- #if !MIN_VERSION_aeson(2, 0, 2)
+--                                      config
+-- #else
+--                                      (toHashMap config)
+-- #endif
+--           )
+--     -- [Note: Hack "ghc-X.X.X does not compile with ghc XXX"]
+--     -- ------------------------------------------------------
+--     -- See for example
+--     -- https://gitlab.haskell.org/ghc/ghc/-/issues/21633 &
+--     -- https://gitlab.haskell.org/ghc/ghc/-/issues/21634.
+--     --
+--     -- The idea is to replace the resolver with whatever is prevailing
+--     -- (or ghc-9.6.4 if that's not possible).
+--     -- 9.6 since 2024/02/26 d9d69e127a735cfc3dbe8b1f7dc96a06fe654c3e
+--       resolverDefault = "lts-22.12" -- ghc-9.6.4
+--       -- The resolver has to curate packages so resolvers of the form
+--       -- ghc-x.y.z won't do.
+--       resolver' = case fromMaybe resolverDefault resolver of
+--         r | "ghc-" `isPrefixOf` r -> resolverDefault
+--         r -> r
+--       -- This is still an issue with 9.6.1 (resolver in
+--       -- hadrian/stack.yaml is a 9.0.2 resolver i.e. not recent enough
+--       -- to build GHC so causes a configure error).
+--       config'' = if ghcSeries ghcFlavor < GHC_9_4
+--                      then config'
+--                      else
+--                            -- Ignore 'hadrian.cabal' constraints.
+--                            HMS.insert "allow-newer" (toJSON True) $
+--                            HMS.update (\_ -> Just (toJSON resolver')) "resolver" config'
+--   Y.encodeFile hadrianStackYaml config''
 
 -- Data type representing an approximately parsed Cabal file.
 data Cabal = Cabal
@@ -1528,24 +1539,20 @@ generatePrerequisites ghcFlavor = do
       =<< readFile' "./mk/get-win32-tarballs.sh"
     )
 
-  -- If building happy in the next step, the configure it does
-  -- requires some versions of alex and happy pre-exist. We make sure
-  -- of this in CI.hs.
-  system_ "stack --stack-yaml hadrian/stack.yaml build --only-dependencies"
-  system_ "stack --stack-yaml hadrian/stack.yaml exec -- bash -c ./boot"
-  system_ "stack --stack-yaml hadrian/stack.yaml exec -- bash -c \"./configure --enable-tarballs-autodownload\""
+  system_ "bash -c ./boot"
+  system_ "bash -c \"./configure --enable-tarballs-autodownload\""
   withCurrentDirectory "hadrian" $ do
-    -- No need to specify a stack.yaml here, we are in the hadrian
-    -- directory itself.
-    system_ "stack build --no-library-profiling"
+    system_ "bash -c \"unset GHC_PACKAGE_PATH && cabal update\""
+    system_ "bash -c \"unset GHC_PACKAGE_PATH && cabal build exe:hadrian\""
     system_ $ unwords $ [
-            "stack exec hadrian --"
+            "bash -c \"unset GHC_PACKAGE_PATH && cabal run exe:hadrian --"
           , "--directory=.."
           , "--build-root=ghc-lib"
         ] ++
         [ "--bignum=native" | ghcSeries ghcFlavor >= GHC_9_0 ] ++
         [ "--integer-simple" | ghcSeries ghcFlavor < GHC_9_0 ] ++
-        ghcLibParserExtraFiles ghcFlavor ++ map (dataDir </>) (dataFiles ghcFlavor)
+        ghcLibParserExtraFiles ghcFlavor ++ map (dataDir </>) (dataFiles ghcFlavor) ++
+        ["\""]
 
 -- Given an Hsc, Alex, or Happy file, generate a placeholder module
 -- with the same module imports.
