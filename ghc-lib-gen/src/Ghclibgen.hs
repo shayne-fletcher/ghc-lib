@@ -314,10 +314,6 @@ calcParserModules ghcFlavor = do
   let rootModulePath = placeholderModulesDir </> "Main.hs"
   copyFile ("../ghc-lib-gen/ghc-lib-parser" </> show flavor </> "Main.hs") rootModulePath
 
-  semaphoreCompatBootExists <- (== ExitSuccess) . fst <$> systemOutput "bash -c \"ghc-pkg list | grep semaphore\""
-  when (not semaphoreCompatBootExists && flavor >= GHC_9_8) $
-    system_ "bash -c \"unset GHC_PACKAGE_PATH && cabal install --lib semaphore-compat-1.0.0 --force-reinstalls\""
-
   ghcVersion <- ("ghc-" ++) <$> systemOutput_ "bash -c \"echo -n $(ghc --numeric-version)\""
   home <- systemOutput_ "bash -c \"echo -n $HOME\""
   let cabalPackageDb =
@@ -325,6 +321,13 @@ calcParserModules ghcFlavor = do
           "/c/cabal/store" </> ghcVersion </> "package.db"
         else
           home </> ".cabal/store" </> ghcVersion </> "package.db"
+  putStrLn $ "cabalPackageDb: " ++ cabalPackageDb
+
+  semaphoreCompatBootExists <- (== ExitSuccess) . fst <$> systemOutput "bash -c \"ghc-pkg list | grep semaphore\""
+  when (not semaphoreCompatBootExists && flavor >= GHC_9_8) $ do
+    when isWindows $ do
+      system_ "bash -c \"unset GHC_PACKAGE_PATH && cabal install --lib unix --force-reinstalls -v3\""
+    system_ "bash -c \"unset GHC_PACKAGE_PATH && cabal install --lib semaphore-compat --force-reinstalls -v3\""
 
   let includeDirs = map ("-I" ++ ) (ghcLibParserIncludeDirs ghcFlavor)
       hsSrcDirs = ghcLibParserHsSrcDirs True ghcFlavor lib
@@ -346,7 +349,7 @@ calcParserModules ghcFlavor = do
         [ "-package exceptions" | flavor == GHC_9_0 ] ++
         [ flag |
           flavor >= GHC_9_8,
-          not (semaphoreCompatBootExists || isWindows),
+          not semaphoreCompatBootExists,
           flag <-  [
               "-ignore-package os-string"
             , "-package filepath"
@@ -356,35 +359,111 @@ calcParserModules ghcFlavor = do
         ["-package semaphore-compat" | flavor >= GHC_9_8] ++
         hsSrcIncludes ++
         [ rootModulePath ]
-      cmd' =
-        if semaphoreCompatBootExists || isWindows then
-          cmd
-        else
-          "bash -c \"GHC_PACKAGE_PATH=" ++ cabalPackageDb ++ ": " ++ cmd ++ "\""
+  cmd' <- if semaphoreCompatBootExists then
+            pure cmd
+          else do
+            isDirectory <- doesDirectoryExist cabalPackageDb
+            putStrLn $ "Cabal packages: " ++ cabalPackageDb
+            system_ $ "bash -c \"ls \"" ++ cabalPackageDb ++ "/*"
+            system_ $ "bash -c \"GHC_PACKAGE_PATH=" ++ cabalPackageDb ++ " ghc-pkg list\""
+            if isDirectory then
+              pure $ "bash -c \"GHC_PACKAGE_PATH=" ++ cabalPackageDb ++ ": " ++ cmd ++ "\""
+            else pure cmd
   putStrLn "# Generating 'ghc/.parser-depends'..."
   putStrLn $ "\n\n# Running: " ++ cmd'
   system_ cmd'
 
-  buf <- readFile' ".parser-depends"
-  -- The idea here is harvest from lines like
-  -- 'compiler/prelude/PrelRules.o : compiler/prelude/PrelRules.hs',
-  -- just the module name e.g. in this example, 'PrelRules'.
-      -- Strip comment lines.
-  let depends = filter (not . isPrefixOf "#") (lines buf)
-      -- Restrict to Haskell source file lines.
-      moduleLines = filter (isSuffixOf ".hs") depends
-      -- Strip each line up-to and including ':'.
-      modulePaths = map (trim . snd) (mapMaybe (stripInfix ":") moduleLines)
-      -- Remove leading source directories from what's left.
-      strippedModulePaths = foldl
-        (\acc p -> map (replace (p ++ "/") "") acc)
-        modulePaths
-        (placeholderModulesDir : hsSrcDirs)
-      -- Lastly, manipulate text like 'GHC/Exts/Heap/Constants.hs'
-      -- into 'GHC.Exts.Heap.Constants'.
-      modules = [ replace "/" "." . dropSuffix ".hs" $ m | m <- strippedModulePaths, m /= "Main.hs" ]
+-- Calculate via `ghc -M` the list of modules that are required for
+-- 'ghc-lib-parser'.
+calcParserModules :: GhcFlavor -> IO [String]
+calcParserModules ghcFlavor = do
+  let flavor = ghcSeries ghcFlavor
 
-  return $ nubSort modules
+  lib <- mapM readCabalFile (cabalFileLibraries ghcFlavor)
+
+  genPlaceholderModules "compiler"
+  genPlaceholderModules "libraries/ghc-heap"
+  genPlaceholderModules "libraries/ghc-internal"
+  genPlaceholderModules "libraries/ghci"
+
+  whenM (doesDirectoryExist "compiler/") $ do
+    files <- filter ((`elem` [".hs-boot"]) . takeExtension) <$> listFilesRecursive "compiler/"
+    forM_ files $ \file -> do
+      let p = fromJust (stripPrefix "compiler/" file)
+          new_p =  placeholderModulesDir </> p
+          dir = System.FilePath.takeDirectory new_p
+      createDirectoryIfMissing True dir
+      copyFile file new_p
+  whenM (doesDirectoryExist "libraries/ghc-internal/src/") $ do
+    files <- filter ((`elem` [".hs-boot"]) . takeExtension) <$> listFilesRecursive "libraries/ghc-internal/src/"
+    forM_ files $ \file -> do
+      let p = fromJust (stripPrefix "libraries/ghc-internal/src/" file)
+          new_p =  placeholderModulesDir </> p
+          dir = System.FilePath.takeDirectory new_p
+      createDirectoryIfMissing True dir
+      copyFile file new_p
+
+  let rootModulePath = placeholderModulesDir </> "Main.hs"
+  copyFile ("../ghc-lib-gen/ghc-lib-parser" </> show flavor </> "Main.hs") rootModulePath
+
+  ghcVersion <- ("ghc-" ++) <$> systemOutput_ "bash -c \"echo -n $(ghc --numeric-version)\""
+  home <- systemOutput_ "bash -c \"echo -n $HOME\""
+  let cabalPackageDb =
+        if isWindows then
+          "/c/cabal/store" </> ghcVersion </> "package.db"
+        else
+          home </> ".cabal/store" </> ghcVersion </> "package.db"
+  putStrLn $ "cabalPackageDb: " ++ cabalPackageDb
+
+  semaphoreCompatBootExists <- (== ExitSuccess) . fst <$> systemOutput "bash -c \"ghc-pkg list | grep semaphore\""
+  when (not semaphoreCompatBootExists && flavor >= GHC_9_8) $ do
+    when isWindows $ do
+      system_ "bash -c \"unset GHC_PACKAGE_PATH && cabal install --lib unix --force-reinstalls -v3\""
+    system_ "bash -c \"unset GHC_PACKAGE_PATH && cabal install --lib semaphore-compat --force-reinstalls -v3\""
+
+  let includeDirs = map ("-I" ++ ) (ghcLibParserIncludeDirs ghcFlavor)
+      hsSrcDirs = ghcLibParserHsSrcDirs True ghcFlavor lib
+      hsSrcIncludes = map ("-i" ++ ) (placeholderModulesDir : hsSrcDirs)
+      cmd = unwords $
+        [ "ghc" ] ++
+        [ "-optP -DGHCI" | ghcSeries ghcFlavor < GHC_8_10 ] ++
+        [ "-optP -DSTAGE=2" | ghcSeries ghcFlavor < GHC_8_10 ] ++
+        [ "-optP -DGHC_IN_GHCI" | ghcSeries ghcFlavor < GHC_9_2 ] ++
+        [ "-dep-suffix ''"
+        , "-dep-makefile .parser-depends"
+        , "-M"
+        ] ++
+        includeDirs ++
+        [ "-ignore-package ghc"
+        , "-ignore-package ghci"
+        , "-package base"
+        ] ++
+        [ "-package exceptions" | flavor == GHC_9_0 ] ++
+        [ flag |
+          flavor >= GHC_9_8,
+          not semaphoreCompatBootExists,
+          flag <-  [
+              "-ignore-package os-string"
+            , "-package filepath"
+            , "-package unix"
+            ]
+        ] ++
+        ["-package semaphore-compat" | flavor >= GHC_9_8] ++
+        hsSrcIncludes ++
+        [ rootModulePath ]
+  cmd' <- if semaphoreCompatBootExists then
+            pure cmd
+          else do
+            isDirectory <- doesDirectoryExist cabalPackageDb
+            putStrLn $ "Cabal packages: " ++ cabalPackageDb
+            system_ $ "bash -c \"ls \"" ++ cabalPackageDb ++ "/*"
+            system_ $ "bash -c \"GHC_PACKAGE_PATH=" ++ cabalPackageDb ++ " ghc-pkg list\""
+            if isDirectory then
+              pure $ "bash -c \"GHC_PACKAGE_PATH=" ++ cabalPackageDb ++ ": " ++ cmd ++ "\""
+            else pure cmd
+  putStrLn "# Generating 'ghc/.parser-depends'..."
+  putStrLn $ "\n\n# Running: " ++ cmd'
+  system_ cmd'
 
 calcLibModules :: GhcFlavor -> IO [String]
 calcLibModules ghcFlavor = do
@@ -404,6 +483,7 @@ calcLibModules ghcFlavor = do
           "/c/cabal/store" </> ghcVersion </> "package.db"
         else
           home </> ".cabal/store" </> ghcVersion </> "package.db"
+  putStrLn $ "cabalPackageDb: " ++ cabalPackageDb
 
   let hsSrcDirs = ghcLibHsSrcDirs True ghcFlavor lib
       hsSrcIncludes = map ("-i" ++ ) (placeholderModulesDir : hsSrcDirs)
@@ -425,7 +505,7 @@ calcLibModules ghcFlavor = do
         [ "-package exceptions" | flavor == GHC_9_0 ] ++
         [ flag |
           flavor >= GHC_9_8,
-          not (semaphoreCompatBootExists || isWindows),
+          not semaphoreCompatBootExists,
           flag <-  [
               "-ignore-package os-string"
             , "-package filepath"
@@ -435,11 +515,16 @@ calcLibModules ghcFlavor = do
         ["-package semaphore-compat" | flavor >= GHC_9_8] ++
         hsSrcIncludes ++
         [ rootModulePath ]
-      cmd' =
-        if semaphoreCompatBootExists || isWindows then
-          cmd
-        else
-          "bash -c \"GHC_PACKAGE_PATH=" ++ cabalPackageDb ++ ": " ++ cmd ++ "\""
+  cmd' <- if semaphoreCompatBootExists then
+            pure cmd
+          else do
+            isDirectory <- doesDirectoryExist cabalPackageDb
+            putStrLn $ "Cabal packages: " ++ cabalPackageDb
+            system_ $ "bash -c \"ls \"" ++ cabalPackageDb ++ "/*"
+            system_ $ "bash -c \"GHC_PACKAGE_PATH=" ++ cabalPackageDb ++ " ghc-pkg list\""
+            if isDirectory then
+              pure $ "bash -c \"GHC_PACKAGE_PATH=" ++ cabalPackageDb ++ ": " ++ cmd ++ "\""
+            else pure cmd
   putStrLn "# Generating 'ghc/.lib-depends'..."
   putStrLn $ "\n\n# Running: " ++ cmd'
   system_ cmd'
