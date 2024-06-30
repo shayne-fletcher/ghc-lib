@@ -222,6 +222,7 @@ compilerDependencies ghcFlavor =
          , incl <- [
              "primop-is-work-free.hs-incl"
            , "primop-is-cheap.hs-incl"
+           , "primop-deprecations.hs-incl"
          ]
   ] ++
   [ "GHC/Platform/Constants.hs" | series >= GHC_9_2 ]
