@@ -349,18 +349,11 @@ calcModuleDeps includeDirs _hsSrcDirs hsSrcIncludes ghcFlavor ghcPackagePath sem
         , "-package base"
         ] ++
         [ "-package exceptions" | series == GHC_9_0 ] ++
-        [ flag | series >= GHC_9_8
-          ,  not semaphoreCompatBootExists
-          , flag <-
-            [ "-ignore-package os-string" ] ++
-            [ "-package filepath" ]++
-            [ "-package " ++ if not isWindows then "unix" else "Win32" ]
-          ] ++
-        ["-package semaphore-compat" | series >= GHC_9_8] ++
+        [ "-package semaphore-compat" | series >= GHC_9_8 ] ++
         hsSrcIncludes ++
         [ rootModulePath ]
       cmd' =
-        if semaphoreCompatBootExists then
+        if series < GHC_9_8 || semaphoreCompatBootExists then
           cmd
         else
           "bash -c \"" ++ ghcPackagePath ++ " " ++ cmd ++ "\""
