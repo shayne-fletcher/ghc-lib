@@ -288,11 +288,18 @@ ghcNumericVersion = do
   systemOutput_ "bash -c \"echo -n $(ghc --numeric-version)\""
 
 cabalPackageDb :: String -> IO String
-cabalPackageDb _ghcNumericVersion = do
-  if isWindows then
-    systemOutput_ "bash -c \"echo -n /c/cabal/store/$(ls /c/cabal/store | grep $(ghc --numeric-version))/package.db\""
-  else
-    systemOutput_ "bash -c \"echo -n $HOME/.cabal/store/$(ls $HOME/.cabal/store | grep $(ghc --numeric-version))/package.db\""
+cabalPackageDb ghcNumericVersion = do
+  cabalStoreDir <-
+    if isWindows then
+      systemOutput_ "bash -c \"echo -n $(cygpath -u $(cabal path | grep store-dir | awk '{ print $2 }'))\""
+    else
+      systemOutput_ "bash -c \"echo -n $(cabal path | grep store-dir | awk '{ print $2 }')\""
+  ghcDir <- systemOutput_ $ "bash -c \"echo -n $(ls " ++ cabalStoreDir ++ " | grep " ++ ghcNumericVersion ++ ")\""
+  pure $ cabalStoreDir ++ "/" ++ ghcDir ++ "/package.db"
+  -- if isWindows then
+  --   systemOutput_ "bash -c \"echo -n /c/cabal/store/$(ls /c/cabal/store | grep $(ghc --numeric-version))/package.db\""
+  -- else
+  --   systemOutput_ "bash -c \"echo -n $HOME/.cabal/store/$(ls $HOME/.cabal/store | grep $(ghc --numeric-version))/package.db\""
 
 ghcPackagePath :: String -> String -> IO String
 ghcPackagePath cabalPackageDb ghcNumericVersion =

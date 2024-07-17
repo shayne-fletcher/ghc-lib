@@ -187,11 +187,11 @@ steps:
       MSYSTEM=CLANG64; export MSYSTEM
       GHCUP_MSYS2=/c/msys64; export GHCUP_MSYS2
       /c/msys64/usr/bin/bash --noprofile --norc -e -o pipefail -c \
-      "cabal --store-dir=/c/cabal/store update && cabal --store-dir=/c/cabal/store run exe:ghc-lib-build-tool $(cabal-build-constraints) -- $(mode)"
+      "cabal update && cabal run exe:ghc-lib-build-tool $(cabal-build-constraints) -- $(mode)"
     condition: eq( variables['Agent.OS'], 'Windows_NT' )
     displayName: run CI.hs (windows)
   - bash: |-
       PATH="$HOME/.ghcup/ghc/$(cabal-with-ghc)/bin":"$HOME/.ghcup/bin":"$PATH"; export PATH
-      cabal --store-dir=$HOME/.cabal/store update && cabal --store-dir=$HOME/.cabal/store run exe:ghc-lib-build-tool $(cabal-build-constraints) -- $(mode)
+      cabal update && cabal run exe:ghc-lib-build-tool $(cabal-build-constraints) -- $(mode)
     condition: or(eq(variables['Agent.OS'], 'Darwin'), eq(variables['Agent.OS'], 'Linux'))
     displayName: run CI.hs (unix)
