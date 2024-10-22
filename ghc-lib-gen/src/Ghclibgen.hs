@@ -920,6 +920,17 @@ mangleCSymbols ghcFlavor = do
   let initGenSym = "initGenSym"
   let enableTimingStats = "enableTimingStats"
   let setHeapSize = "setHeapSize"
+  let keepCAFsForGHCi = "keepCAFsForGHCi"
+  keepCAFsForCHCiExists <- doesFileExist "compiler/cbits/keepCAFsForGHCi.c"
+  when keepCAFsForCHCiExists $ do
+    let file = "compiler/cbits/keepCAFsForGHCi.c"
+     in writeFile file
+          . prefixSymbol keepCAFsForGHCi
+          =<< readFile' file
+    let file = "compiler/GHC.hs"
+     in writeFile file
+          . prefixForeignImport keepCAFsForGHCi
+          =<< readFile' file
   let file = "compiler/cbits/genSym.c"
    in writeFile file
         . prefixSymbol genSym
