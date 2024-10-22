@@ -1357,7 +1357,7 @@ generateGhcLibCabal ghcFlavor customCppOpts = do
         "    build-depends:"
       ],
       indent2 (Data.List.NonEmpty.toList (withCommas (ghcLibBuildDepends ghcFlavor))),
-      ["    build-tool-depends: alex:alex >= 3.1, " ++ "happy:happy > " ++ if ghcSeries ghcFlavor < GHC_8_10 then "1.19" else "1.20" ++ " && < 2.0"],
+      ["    build-tool-depends: alex:alex >= 3.1, " ++ "happy:happy > " ++ if ghcSeries ghcFlavor < GHC_8_10 then "1.19" else "1.20"],
       ["    other-extensions:"],
       indent2 (askField lib "other-extensions:"),
       ["    default-extensions:"],
@@ -1467,7 +1467,7 @@ generateGhcLibParserCabal ghcFlavor customCppOpts = do
       [ "    if impl(ghc >= 9.10)",
         "      build-depends: ghc-internal"
       ],
-      ["    build-tool-depends: alex:alex >= 3.1, " ++ "happy:happy > " ++ if ghcSeries ghcFlavor < GHC_8_10 then "1.19" else "1.20" ++ " && < 2.0"],
+      ["    build-tool-depends: alex:alex >= 3.1, " ++ "happy:happy > " ++ if ghcSeries ghcFlavor < GHC_8_10 then "1.19" else "1.20"],
       ["    other-extensions:"],
       indent2 (askField lib "other-extensions:"),
       ["    default-extensions:"],

@@ -31,9 +31,9 @@ jobs:
         shell: C:\msys64\usr\bin\bash.exe --noprofile --norc -e -o pipefail '{0}'
         run: |-
           pacman -S autoconf automake-wrapper make patch python tar mintty --noconfirm
-          cabal run exe:ghc-lib-build-tool -- --ghc-flavor ghc-9.2.8
+          cabal run exe:ghc-lib-build-tool --constraint=any."happy<2.0" -- --ghc-flavor ghc-9.2.8
         if: matrix.os == 'windows-latest'
       - name: Run CI.hs (unix)
         shell: bash
-        run: cabal run exe:ghc-lib-build-tool -- --ghc-flavor ghc-9.2.8
+        run: cabal run exe:ghc-lib-build-tool --constraint=any."happy<2.0" -- --ghc-flavor ghc-9.2.8
         if: matrix.os == 'ubuntu-latest' || matrix.os ==  'macos-13'
