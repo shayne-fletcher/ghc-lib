@@ -1567,20 +1567,12 @@ generatePrerequisites ghcFlavor = do
         =<< readFile' "./mk/get-win32-tarballs.sh"
     )
 
-  -- When there is a new GHC release it takes time for package bounds
-  -- to get updated.
-#if __GLASGOW_HASKELL__ == 912
-  let hadrianExtraCabalFlags = "--allow-newer "
-#else
-  let hadrianExtraCabalFlags = ""
-#endif
-
   system_ "bash -c ./boot"
   system_ "bash -c \"./configure --enable-tarballs-autodownload\""
   withCurrentDirectory "hadrian" $ do
-    system_ $ "cabal build " ++ hadrianExtraCabalFlags ++ "exe:hadrian --ghc-options=-j"
+    system_ $ "cabal build " ++ "exe:hadrian --ghc-options=-j"
     system_ . unwords . join $
-      [ [ "cabal run " ++ hadrianExtraCabalFlags ++ "exe:hadrian --",
+      [ [ "cabal run exe:hadrian --",
           "--directory=..",
           "--build-root=ghc-lib"
         ],
