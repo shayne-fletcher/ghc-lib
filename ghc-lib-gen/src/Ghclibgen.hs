@@ -320,6 +320,9 @@ calcModuleDeps includeDirs _hsSrcDirs hsSrcIncludes ghcFlavor cabalPackageDb ghc
     [ ["ghc -M -dep-suffix '' -dep-makefile " ++ ghcMakeModeOutputFile],
       ["-clear-package-db -global-package-db -user-package-db -package-db " ++ cabalPackageDb],
       ["-package semaphore-compat" | series >= GHC_9_8],
+#if __GLASGOW_HASKELL__ == 908 && __GLASGOW_HASKELL_PATCHLEVEL1__ == 4
+      ["-hide-package os-string"], -- avoid System.OsString ambiguity with filepath-1.4.301.0
+#endif
       ["-fno-safe-haskell" | series >= GHC_9_0], -- avoid warning: [GHC-98887] -XGeneralizedNewtypeDeriving is not allowed in Safe Haskell; ignoring -XGeneralizedNewtypeDeriving
       ["-DBIGNUM_NATIVE" | series > GHC_9_12],
       includeDirs,
@@ -921,6 +924,8 @@ mangleCSymbols ghcFlavor = do
           ("foreign import ccall unsafe " <> show (ghcLibParserPrefix <> s))
   let genSym = "genSym"
   let initGenSym = "initGenSym"
+  let ghc_unique_counter = "ghc_unique_counter"
+  let ghc_unique_inc = "ghc_unique_inc"
   let enableTimingStats = "enableTimingStats"
   let setHeapSize = "setHeapSize"
   let keepCAFsForGHCi = "keepCAFsForGHCi"
@@ -936,8 +941,20 @@ mangleCSymbols ghcFlavor = do
           =<< readFile' file
   let file = "compiler/cbits/genSym.c"
    in writeFile file
+        . replace "HsInt ghc_unique_counter = 0;" ""
+        . replace "HsInt ghc_unique_inc     = 1;" ""
+        . replace "HsWord64 ghc_unique_counter64 = 0;" ""
+        =<< readFile' file
+  let file = "compiler/cbits/genSym.c"
+   in writeFile file
+        . replace "#include<Rts.h>" (unlines ["#include<Rts.h>","HsInt ghc_unique_counter = 0;","HsInt ghc_unique_inc = 1;", "HsWord64 ghc_unique_counter64 = 0;"])
+        =<< readFile' file
+  let file = "compiler/cbits/genSym.c"
+   in writeFile file
         . prefixSymbol genSym
         . prefixSymbol initGenSym
+        . prefixSymbol ghc_unique_counter
+        . prefixSymbol ghc_unique_inc
         =<< readFile' file
   when (ghcFlavor == Ghc984) $
     let file = "compiler/cbits/genSym.c"
@@ -945,6 +962,13 @@ mangleCSymbols ghcFlavor = do
           . replace
             "HsWord64 u = atomic_inc64"
             "HsWord64 u = atomic_inc"
+          =<< readFile' file
+  supplyHsExists <- doesFileExist "compiler/GHC/Types/Unique/Supply.hs"
+  when (supplyHsExists) $ do
+    let file = "compiler/GHC/Types/Unique/Supply.hs"
+     in writeFile file
+          . prefixSymbol ghc_unique_counter
+          . prefixSymbol ghc_unique_inc
           =<< readFile' file
   let files
         | ghcSeries ghcFlavor >= GHC_9_0 = map ("compiler/GHC/Types" </>) ["Unique/Supply.hs", "Unique.hs"]
