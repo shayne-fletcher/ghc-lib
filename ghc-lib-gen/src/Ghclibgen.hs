@@ -1,4 +1,4 @@
--- Copyright (c) 2019-2024, Digital Asset (Switzerland) GmbH and/or
+-- Copyright (c) 2019-2025, Digital Asset (Switzerland) GmbH and/or
 -- its affiliates. All rights reserved.  SPDX-License-Identifier:
 -- (Apache-2.0 OR BSD-3-Clause)
 {-# LANGUAGE CPP #-}
@@ -1226,6 +1226,7 @@ baseBounds = \case
   Ghc964 -> "base >= 4.16.1 && < 4.19" -- [ghc-9.2.2, ghc-9.8.1)
   Ghc965 -> "base >= 4.16.1 && < 4.19" -- [ghc-9.2.2, ghc-9.8.1)
   Ghc966 -> "base >= 4.16.1 && < 4.19" -- [ghc-9.2.2, ghc-9.8.1)
+  Ghc967-> "base >= 4.16.1 && < 4.19" -- [ghc-9.2.2, ghc-9.8.1)
 
   -- base-4.19.0.0, ghc-prim-0.11.0
   Ghc981 -> "base >= 4.17 && < 4.19.1" -- [ghc-9.4.1, ghc-9.8.2)
