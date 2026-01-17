@@ -20,17 +20,21 @@ jobs:
       - name: Install build tools (macOS)
         run: brew install automake
         if: matrix.os == 'macos'
+      - name: Install build tools (ubuntu)
+        run: sudo apt-get update && sudo apt-get install -y libffi-dev
+        if: matrix.os == 'ubuntu'
       - name: Configure msys2 (windows)
         shell: bash
         run: |-
           echo "MSYSTEM=CLANG64" >> $GITHUB_ENV
+          echo "/c/msys64/clang64/bin" >> $GITHUB_PATH
           echo "/c/mingw64/usr/bin" >> $GITHUB_PATH
           echo "/c/msys64/usr/bin" >> $GITHUB_PATH
         if: matrix.os == 'windows'
       - name: Run CI.hs (windows)
         shell: C:\msys64\usr\bin\bash.exe --noprofile --norc -e -o pipefail '{0}'
         run: |-
-          pacman -S autoconf automake-wrapper make patch python tar mintty --noconfirm
+          pacman -S autoconf automake-wrapper make patch python tar mintty mingw-w64-clang-x86_64-libffi mingw-w64-clang-x86_64-pkgconf --noconfirm
           cabal run exe:ghc-lib-build-tool -- --ghc-flavor ghc-master
         if: matrix.os == 'windows'
       - name: Run CI.hs (unix)
