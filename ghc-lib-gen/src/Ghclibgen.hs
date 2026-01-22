@@ -65,6 +65,7 @@ import System.Directory
 import System.Directory.Extra
 import System.FilePath hiding (dropTrailingPathSeparator, normalise, (</>))
 import System.FilePath.Posix (dropTrailingPathSeparator, normalise, (</>))
+import System.Info (os)
 import System.IO.Error (isEOFError)
 import System.IO.Extra
 import System.Process.Extra
@@ -1785,7 +1786,27 @@ generatePrerequisites ghcFlavor allowNewerSpecs = do
     )
 
   system_ "bash -c ./boot"
-  system_ "bash -c \"./configure --enable-tarballs-autodownload\""
+  ffiArgs <- if ghcSeries ghcFlavor >= GHC_9_16
+    then do
+      -- GHC 9.16+ bundles libffi-clib by default; we need to use
+      -- system libffi instead. On macOS, use xcrun to find the SDK
+      -- path (pkg-config often has stale paths). On other platforms,
+      -- use pkg-config.
+      (ffiIncludeDir, ffiLibDir) <-
+        if os == "darwin"
+          then do
+            -- macOS: use xcrun to find the SDK path (pkg-config often has stale paths)
+            sdkPath <- trim <$> systemOutput_ "xcrun --show-sdk-path"
+            pure (sdkPath ++ "/usr/include/ffi", "/usr/lib")
+          else do
+            -- Linux/Windows: use pkg-config
+            inc <- trim <$> systemOutput_ "pkg-config --variable=includedir libffi"
+            lib <- trim <$> systemOutput_ "pkg-config --variable=libdir libffi"
+            pure (inc, lib)
+      pure ["--with-system-libffi", "--with-ffi-includes=" ++ ffiIncludeDir, "--with-ffi-libraries=" ++ ffiLibDir]
+    else pure []
+  let configureArgs = unwords $ ["--enable-tarballs-autodownload"] ++ ffiArgs
+  system_ $ "bash -c \"./configure " ++ configureArgs ++ "\""
   withCurrentDirectory "hadrian" $ do
 
     let allowNewerArgs = mkAllowNewerFlagsList allowNewerSpecs
